@@ -1,244 +1,139 @@
-import { useState } from 'react';
-import { MOCK_INCIDENTS, MOCK_USERS } from '../data/mockData.js';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient.js';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+
+const RANGES = [{ label:'Last 7 days', value:'7' }, { label:'Last 30 days', value:'30' }, { label:'Last 90 days', value:'90' }, { label:'All time', value:'all' }];
+const SEV_COLORS = { CRITICAL:'#ef4444', HIGH:'#f97316', MEDIUM:'#eab308', LOW:'#22c55e' };
+const CAT_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
 
 export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState('30');
+  const [range,     setRange]     = useState('30');
+  const [incidents, setIncidents] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState('');
 
-  // Compute metrics
-  const totalIncidents = MOCK_INCIDENTS.length;
-  const byStatus = MOCK_INCIDENTS.reduce((acc, i) => {
-    acc[i.status] = (acc[i.status] || 0) + 1;
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      let query = supabase.from('incidents').select('*').order('created_at', { ascending: false });
+      if (range !== 'all') {
+        const since = new Date(Date.now() - parseInt(range) * 86400000).toISOString();
+        query = query.gte('created_at', since);
+      }
+      const { data, error } = await query;
+      if (error) setError(error.message);
+      else setIncidents(data || []);
+      setLoading(false);
+    })();
+  }, [range]);
+
+  const agg = (field) => incidents.reduce((acc, i) => {
+    const k = i[field] || 'Unknown';
+    acc[k] = (acc[k] || 0) + 1;
     return acc;
   }, {});
-  const bySeverity = MOCK_INCIDENTS.reduce((acc, i) => {
-    acc[i.severity] = (acc[i.severity] || 0) + 1;
-    return acc;
-  }, {});
-  const byCategory = MOCK_INCIDENTS.reduce((acc, i) => {
-    acc[i.category] = (acc[i.category] || 0) + 1;
-    return acc;
-  }, {});
 
-  // Resolution times (mock: random data for demonstration)
-  const resolvedIncidents = MOCK_INCIDENTS.filter(i => i.resolvedAt);
-  const avgResolutionTime = resolvedIncidents.length > 0
-    ? Math.round(resolvedIncidents.reduce((sum, i) => {
-        const diff = new Date(i.resolvedAt) - new Date(i.createdAt);
-        return sum + (diff / 3600000);
-      }, 0) / resolvedIncidents.length)
-    : 0;
+  const bySeverity = Object.entries(agg('severity')).map(([name, value]) => ({ name, value }));
+  const byStatus   = Object.entries(agg('status')).map(([name, value]) => ({ name, value }));
+  const byCategory = Object.entries(agg('category')).map(([name, value]) => ({ name: name.replace(/_/g,' '), value }));
 
-  // Top analysts by resolved incidents
-  const analystStats = MOCK_USERS
-    .filter(u => ['SOC_ANALYST', 'SOC_LEAD'].includes(u.role))
-    .map(u => ({
-      ...u,
-      resolved: MOCK_INCIDENTS.filter(i => i.assignedToId === u.id && i.resolvedAt).length,
-      active: MOCK_INCIDENTS.filter(i => i.assignedToId === u.id && !i.resolvedAt).length,
-    }))
-    .sort((a, b) => b.resolved - a.resolved);
+  const resolved = incidents.filter(i => i.resolved_at);
+  const mttr = resolved.length
+    ? Math.round(resolved.reduce((sum, i) => sum + (new Date(i.resolved_at) - new Date(i.created_at)), 0) / resolved.length / 3600000)
+    : null;
 
-  // SLA compliance
-  const slaTargets = { CRITICAL: 4, HIGH: 8, MEDIUM: 24, LOW: 72 };
-  const slaBreaches = MOCK_INCIDENTS.filter(i => {
-    const elapsed = (Date.now() - new Date(i.createdAt)) / 3600000;
-    return elapsed > slaTargets[i.severity];
+  const critical = incidents.filter(i => i.severity === 'CRITICAL').length;
+  const open     = incidents.filter(i => i.status !== 'Resolved' && i.status !== 'Closed').length;
+  const breached = incidents.filter(i => {
+    const targets = { CRITICAL:4, HIGH:8, MEDIUM:24, LOW:72 };
+    const t = targets[i.severity];
+    return i.status !== 'Resolved' && i.status !== 'Closed' && t && ((Date.now() - new Date(i.created_at)) / 3600000) > t;
   }).length;
-  const slaCompliance = Math.round(((totalIncidents - slaBreaches) / totalIncidents) * 100);
 
-  // Monthly trend (mock: last 6 months)
-  const monthTrend = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'].map((month, i) => ({
-    month,
-    incidents: Math.floor(Math.random() * 20) + 5,
-  }));
+  const SummaryCard = ({ label, value, color }) => (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
+      <p className={`text-3xl font-bold ${color || 'text-white'}`}>{value ?? '\u2014'}</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-950 p-6">
+    <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-xl mx-auto">
-        
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Security Operations <span className="text-blue-400">Reports</span></h1>
-            <p className="text-gray-500 text-sm mt-0.5">Analytics &amp; Performance Metrics</p>
+            <h1 className="text-2xl font-bold text-white">Reports <span className="text-blue-400">&amp; Analytics</span></h1>
+            <p className="text-gray-500 text-sm mt-0.5">Incident metrics for the selected period</p>
           </div>
-          <select
-            value={dateRange}
-            onChange={e => setDateRange(e.target.value)}
-            className="select text-sm"
-          >
-            <option value="7">Last 7 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="365">Last 12 months</option>
+          <select value={range} onChange={e=>setRange(e.target.value)} className="select">
+            {RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Incidents</p>
-            <p className="text-3xl font-bold text-white mt-1">{totalIncidents}</p>
-            <p className="text-xs text-green-400 mt-1">↑ 12% vs last period</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Avg. Resolution</p>
-            <p className="text-3xl font-bold text-white mt-1">{avgResolutionTime}h</p>
-            <p className="text-xs text-green-400 mt-1">↓ 8% faster</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">SLA Compliance</p>
-            <p className="text-3xl font-bold text-white mt-1">{slaCompliance}%</p>
-            <p className="text-xs text-yellow-400 mt-1">{slaBreaches} breaches</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Open Incidents</p>
-            <p className="text-3xl font-bold text-white mt-1">{byStatus.OPEN || 0}</p>
-            <p className="text-xs text-gray-500 mt-1">Require attention</p>
-          </div>
-        </div>
+        {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
 
-        {/* Charts row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          
-          {/* Incidents by Status */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Incidents by Status</h3>
-            <div className="space-y-3">
-              {['OPEN', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED', 'CLOSED'].map(status => {
-                const count = byStatus[status] || 0;
-                const pct = (count / totalIncidents * 100).toFixed(0);
-                const colors = {
-                  OPEN: 'bg-blue-500',
-                  IN_PROGRESS: 'bg-yellow-500',
-                  ESCALATED: 'bg-red-500',
-                  RESOLVED: 'bg-green-500',
-                  CLOSED: 'bg-gray-500',
-                };
-                return (
-                  <div key={status}>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>{status.replace('_', ' ')}</span>
-                      <span>{count} ({pct}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div className={`h-2 rounded-full ${colors[status]}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <SummaryCard label="Total Incidents" value={incidents.length} />
+              <SummaryCard label="Open"            value={open}            color="text-yellow-400" />
+              <SummaryCard label="Critical"        value={critical}        color="text-red-400" />
+              <SummaryCard label="SLA Breached"    value={breached}        color="text-red-500" />
             </div>
-          </div>
-
-          {/* Incidents by Severity */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Incidents by Severity</h3>
-            <div className="space-y-3">
-              {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => {
-                const count = bySeverity[sev] || 0;
-                const pct = (count / totalIncidents * 100).toFixed(0);
-                const colors = {
-                  CRITICAL: 'bg-red-500',
-                  HIGH: 'bg-orange-500',
-                  MEDIUM: 'bg-yellow-500',
-                  LOW: 'bg-blue-400',
-                };
-                return (
-                  <div key={sev}>
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>{sev}</span>
-                      <span>{count} ({pct}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div className={`h-2 rounded-full ${colors[sev]}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <SummaryCard label="Resolved"        value={resolved.length} color="text-green-400" />
+              <SummaryCard label="MTTR (hours)"    value={mttr != null ? `${mttr}h` : 'N/A'} color="text-blue-400" />
+              <SummaryCard label="Resolution Rate" value={incidents.length ? `${Math.round(resolved.length/incidents.length*100)}%` : 'N/A'} color="text-purple-400" />
+              <SummaryCard label="Avg/Day"         value={range !== 'all' ? (incidents.length / parseInt(range)).toFixed(1) : 'N/A'} />
             </div>
-          </div>
 
-        </div>
-
-        {/* Category breakdown + Monthly trend */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          
-          {/* Incidents by Category */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Incidents by Category</h3>
-            <div className="space-y-3">
-              {Object.entries(byCategory)
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, count]) => {
-                  const pct = (count / totalIncidents * 100).toFixed(0);
-                  return (
-                    <div key={cat}>
-                      <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>{cat.replace('_', ' ')}</span>
-                        <span>{count} ({pct}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-2">
-                        <div className="h-2 rounded-full bg-purple-500" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-4">By Severity</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={bySeverity} margin={{top:0,right:0,bottom:0,left:-20}}>
+                    <XAxis dataKey="name" tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
+                    <YAxis tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} />
+                    <Bar dataKey="value" radius={[4,4,0,0]}>
+                      {bySeverity.map((e,i) => <Cell key={i} fill={SEV_COLORS[e.name]||'#3b82f6'} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-4">By Status</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={byStatus} margin={{top:0,right:0,bottom:0,left:-20}}>
+                    <XAxis dataKey="name" tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
+                    <YAxis tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* Monthly Trend */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Monthly Trend (6 Months)</h3>
-            <div className="flex items-end justify-between h-48 gap-2">
-              {monthTrend.map((m, i) => {
-                const maxVal = Math.max(...monthTrend.map(x => x.incidents));
-                const height = (m.incidents / maxVal) * 100;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center">
-                    <div className="w-full flex items-end justify-center h-full">
-                      <div
-                        className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t"
-                        style={{ height: `${height}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">{m.month}</p>
-                  </div>
-                );
-              })}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-300 mb-4">By Category</h3>
+              {byCategory.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={byCategory} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" label={({name,percent})=>`${name} (${(percent*100).toFixed(0)}%)`} labelLine={{stroke:'#374151'}}>
+                      {byCategory.map((_,i) => <Cell key={i} fill={CAT_COLORS[i%CAT_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:'12px',color:'#9ca3af'}} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="text-gray-600 text-sm text-center py-12">No data for this period</p>}
             </div>
-          </div>
-
-        </div>
-
-        {/* Analyst Performance Table */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-gray-300 mb-4">Analyst Performance</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                  <th className="pb-3">Analyst</th>
-                  <th className="pb-3">Role</th>
-                  <th className="pb-3 text-center">Resolved</th>
-                  <th className="pb-3 text-center">Active</th>
-                  <th className="pb-3 text-center">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {analystStats.map(u => (
-                  <tr key={u.id} className="hover:bg-gray-800/30">
-                    <td className="py-3 text-gray-300">{u.name}</td>
-                    <td className="py-3 text-gray-400">{u.role.replace('_', ' ')}</td>
-                    <td className="py-3 text-center text-green-400 font-semibold">{u.resolved}</td>
-                    <td className="py-3 text-center text-yellow-400 font-semibold">{u.active}</td>
-                    <td className="py-3 text-center text-gray-300 font-semibold">{u.resolved + u.active}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,42 +1,76 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient.js';
 
 const AuthContext = createContext(null);
 
-// Mock users matching the seeded database
-const MOCK_USERS = [
-  { id: 'mock-admin-1', name: 'Alice Admin', email: 'admin@ccorp.local', password: 'Admin@1234', role: 'ADMIN' },
-  { id: 'mock-lead-1', name: 'Sam Lead', email: 'lead@ccorp.local', password: 'Lead@1234', role: 'SOC_LEAD' },
-  { id: 'mock-analyst-1', name: 'John Analyst', email: 'analyst@ccorp.local', password: 'Analyst@1234', role: 'ANALYST' },
-    { id: 'mock-viewer-1', name: 'Val Viewer', email: 'viewer@ccorp.local', password: 'Viewer@1234', role: 'VIEWER' },
-];
-
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('sirts_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = async (email, password) => {
-    const user = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
-    );
-    if (!user) throw new Error('Invalid credentials');
-    const { password: _, ...safeUser } = user;
-    localStorage.setItem('sirts_user', JSON.stringify(safeUser));
-    setCurrentUser(safeUser);
-    return safeUser;
+  // Fetch the public.users row joined with roles for a given auth user id
+  const fetchProfile = async (authUser) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*, role:roles(id, name, permissions)')
+      .eq('id', authUser.id)
+      .single();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      role: data.role?.name ?? 'SOC_ANALYST',
+      permissions: data.role?.permissions ?? {},
+      role_id: data.role_id,
+    };
   };
 
-  const logout = () => {
-    localStorage.removeItem('sirts_user');
+  useEffect(() => {
+    // 1. Restore existing session on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        const profile = await fetchProfile(session.user);
+        setCurrentUser(profile);
+      }
+      setLoading(false);
+    });
+
+    // 2. Subscribe to auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session);
+        if (session?.user) {
+          const profile = await fetchProfile(session.user);
+          setCurrentUser(profile);
+        } else {
+          setCurrentUser(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+    return data;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, session, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
+
