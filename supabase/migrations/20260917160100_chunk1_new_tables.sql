@@ -118,20 +118,20 @@ DROP POLICY IF EXISTS "incidents_insert_analyst" ON public.incidents;
 CREATE POLICY "incidents_insert_analyst"
   ON public.incidents FOR INSERT TO authenticated
   WITH CHECK (
-    created_by = (SELECT auth.uid()::text)
+    created_by = auth.uid()
   );
 
 -- 6. Allow all authenticated to insert audit_log and comments (RLS only restricts read)
 DROP POLICY IF EXISTS "audit_log_insert" ON public.audit_log;
 CREATE POLICY "audit_log_insert"
   ON public.audit_log FOR INSERT TO authenticated
-  WITH CHECK (user_id = (SELECT auth.uid()::text));
+  WITH CHECK (user_id = auth.uid());
 
 -- 7. Allow all authenticated to insert incident_updates
 DROP POLICY IF EXISTS "incident_updates_insert" ON public.incident_updates;
 CREATE POLICY "incident_updates_insert"
   ON public.incident_updates FOR INSERT TO authenticated
-  WITH CHECK (changed_by = (SELECT auth.uid()::text));
+  WITH CHECK (changed_by = auth.uid());
 
 -- 8. Ensure notifications table has needed columns
 CREATE TABLE IF NOT EXISTS public.notifications (
