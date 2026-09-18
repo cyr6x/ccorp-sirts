@@ -3,74 +3,101 @@ import { supabase } from '../lib/supabaseClient.js';
 
 const AuthContext = createContext(null);
 
+const PREVIEW_ACCOUNT = {
+  email: 'alice@ccorp.local',
+  password: 'Demo@1234',
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
 
-  // Fetch the public.users row joined with roles for a given auth user id
   const fetchProfile = async (authUser) => {
     const { data, error } = await supabase
       .from('users')
       .select('*, role:roles(id, name, permissions)')
       .eq('id', authUser.id)
       .single();
-    if (error || !data) return null;
+
+    if (error) throw error;
+
     return {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role?.name ?? 'SOC_ANALYST',
+      role: data.role?.name ?? 'SOC_ANALYST_L3',
       permissions: data.role?.permissions ?? {},
       role_id: data.role_id,
     };
   };
 
-  useEffect(() => {
-    // 1. Restore existing session on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        const profile = await fetchProfile(session.user);
-        setCurrentUser(profile);
-      }
-      setLoading(false);
-    });
+  const hydrateSession = async (nextSession) => {
+    setSession(nextSession);
+    if (!nextSession?.user) {
+      setCurrentUser(null);
+      return;
+    }
 
-    // 2. Subscribe to auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        if (session?.user) {
-          const profile = await fetchProfile(session.user);
-          setCurrentUser(profile);
-        } else {
+    const profile = await fetchProfile(nextSession.user);
+    setCurrentUser(profile);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const bootstrap = async () => {
+      try {
+        setAuthError('');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        let nextSession = sessionData.session;
+
+        if (!nextSession) {
+          const { data, error } = await supabase.auth.signInWithPassword(PREVIEW_ACCOUNT);
+          if (error) throw error;
+          nextSession = data.session;
+        }
+
+        if (mounted) await hydrateSession(nextSession);
+      } catch (error) {
+        if (mounted) {
+          setAuthError(error.message || 'Unable to establish preview session.');
           setCurrentUser(null);
+          setSession(null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, nextSession) => {
+        if (!mounted || !nextSession?.user) return;
+        try {
+          await hydrateSession(nextSession);
+          setAuthError('');
+        } catch (error) {
+          setAuthError(error.message || 'Unable to load preview profile.');
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
-    return data;
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setSession(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ currentUser, session, login, logout, loading }}>
+    <AuthContext.Provider value={{ currentUser, session, loading, authError }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
-
