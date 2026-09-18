@@ -85,7 +85,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Security Operations <span className="text-blue-400">Dashboard</span></h1>
+          <div className="flex items-baseline gap-3"><h1 className="text-2xl font-semibold tracking-[0.12em] text-white">SIRTS</h1><span className="text-xs uppercase tracking-[0.18em] text-red-400">Overview</span></div>
           <p className="text-gray-500 text-sm mt-1">Welcome back, {currentUser?.name} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
 
@@ -101,7 +101,7 @@ export default function DashboardPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+          <div className="flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /></div>
         ) : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -118,8 +118,8 @@ export default function DashboardPage() {
                   <BarChart data={dayData} margin={{top:0,right:0,bottom:0,left:-20}}>
                     <XAxis dataKey="day" tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} cursor={{fill:'rgba(59,130,246,0.05)'}} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[4,4,0,0]} />
+                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} cursor={{fill:'rgba(239,68,68,0.05)'}} />
+                    <Bar dataKey="count" fill="#ef4444" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
             <div className="bg-gray-900 border border-gray-800 rounded-xl">
               <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-300">Recent Incidents</h3>
-                <Link to="/incidents" className="text-xs text-blue-400 hover:text-blue-300 font-medium">View all &rarr;</Link>
+                <Link to="/incidents" className="text-xs text-red-400 hover:text-red-300 font-medium">View all &rarr;</Link>
               </div>
               <div className="divide-y divide-gray-800">
                 {recent.length===0 && <p className="text-gray-600 text-sm text-center py-8">No incidents yet.</p>}
