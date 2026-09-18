@@ -31,8 +31,15 @@ export default function Navbar() {
 
         <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
           {visibleLinks.map(item => {
-            const active = location.pathname === item.to ||
-              (item.to !== '/dashboard' && item.to !== '/incidents/new' && location.pathname.startsWith(item.to));
+            const active = item.to === '/incidents'
+              ? location.pathname === '/incidents' || (
+                  location.pathname.startsWith('/incidents/') &&
+                  location.pathname !== '/incidents/new'
+                )
+              : location.pathname === item.to || (
+                  item.to !== '/dashboard' &&
+                  location.pathname.startsWith(`${item.to}/`)
+                );
 
             return (
               <Link

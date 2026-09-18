@@ -57,8 +57,8 @@ Mapped to NIST SP 800-61 incident response lifecycle (Identify → Contain → E
 - **Incident Lifecycle** — Create, assign, update, escalate, resolve, close with full audit trail
 - **Live Dashboard** — Bar/pie charts (by day, category, severity), MTTR, KDPA deadline alerts
 - **SLA Tracking** — Per-severity targets (CRITICAL 4h, HIGH 8h, MEDIUM 24h, LOW 72h) with breach indicators
-- **Knowledge Base** — SOC playbooks and threat intel articles; create/edit for Lead/Admin
-- **Asset Inventory** — Register and track servers, workstations, network devices with risk levels
+- **Knowledge Base** — SOC playbooks and threat intel articles; create/edit for L3/Lead/Admin
+- **Asset Inventory** — Register and track servers, workstations, network devices with risk levels; managed by L3/Lead/Admin
 - **Audit Logs** — Immutable paginated log of every action, gated by `audit_read` permission
 - **Reports & Analytics** — Filterable by date range; resolution rate, MTTR, by-category breakdown
 - **Realtime Updates** — Incident list and detail pages update live via Supabase WebSocket channels
@@ -105,7 +105,7 @@ ccorp-sirts/
 ### 1. Clone
 
 ```bash
-git clone https://github.com/baaya/ccorp-sirts.git
+git clone https://github.com/cyr6x/ccorp-sirts.git
 cd ccorp-sirts
 ```
 
@@ -160,7 +160,7 @@ Open http://localhost:3000
 | `ADMIN` | Full platform access; staff management, audit, reports, assignment, closure |
 | `SOC_LEAD` | Team-wide incident operations, assignment/closure, audit, reports, KB/assets management |
 | `SOC_ANALYST_L3` | Senior analyst; team-wide incident handling, assignment/resolution, KB/assets management |
-| `SOC_ANALYST_L2` | Claim assigned/queue incidents, investigate, resolve, and escalate to L3/Lead |
+| `SOC_ANALYST_L2` | Team incident visibility; claim/update assigned or queue incidents, resolve, and escalate to L3/Lead |
 | `SOC_ANALYST_L1` | Claim queue incidents, investigate, comment, and progress active incidents |
 
 ---

@@ -46,3 +46,28 @@ test('route guards protect reports, audit, and user management', async () => {
   assert.match(app, /capability="audit\.view"/);
   assert.match(app, /capability="users\.manage"/);
 });
+
+
+test('active navigation does not mark Incidents and Create simultaneously', async () => {
+  const navbar = await read('src/components/Navbar.jsx');
+  assert.match(navbar, /location\.pathname !== '\/incidents\/new'/);
+});
+
+test('profile-load failure clears the authenticated Supabase session', async () => {
+  const auth = await read('src/context/AuthContext.jsx');
+  assert.match(auth, /await supabase\.auth\.signOut\(\)/);
+});
+
+test('audit filter covers final workflow event names', async () => {
+  const audit = await read('src/pages/AuditLogsPage.jsx');
+  for (const action of [
+    'ASSIGNMENT_CHANGED',
+    'SEVERITY_CHANGED',
+    'KB_ARTICLE_CREATED',
+    'ASSET_UPDATED',
+    'USER_CREATED',
+    'USER_ROLE_CHANGED',
+  ]) {
+    assert.match(audit, new RegExp(action));
+  }
+});

@@ -131,7 +131,7 @@ with check (app_private.current_role()='ADMIN');
 
 create policy incidents_read_visible on public.incidents for select to authenticated
 using (
-  app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3')
+  app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3','SOC_ANALYST_L2')
   or created_by=auth.uid()
   or assigned_to=auth.uid()
   or assigned_to is null
@@ -293,3 +293,104 @@ create index if not exists audit_log_incident_id_idx on public.audit_log(inciden
 create index if not exists incident_updates_incident_id_idx on public.incident_updates(incident_id,created_at desc);
 create index if not exists kb_articles_category_idx on public.kb_articles(category,updated_at desc);
 create index if not exists assets_status_idx on public.assets(status,risk_level);
+
+
+-- Additional audit coverage for investigation notes and administrative modules.
+create or replace function app_private.audit_comment_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.audit_log (incident_id,user_id,action,details)
+  values (new.incident_id, auth.uid(), 'COMMENT_ADDED', 'Investigation note added');
+  return new;
+end
+$$;
+revoke all on function app_private.audit_comment_insert() from public, anon, authenticated;
+
+drop trigger if exists audit_comment_insert on public.comments;
+create trigger audit_comment_insert
+after insert on public.comments
+for each row execute function app_private.audit_comment_insert();
+
+create or replace function app_private.audit_kb_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.audit_log (user_id,action,details)
+  values (
+    auth.uid(),
+    case tg_op
+      when 'INSERT' then 'KB_ARTICLE_CREATED'
+      when 'UPDATE' then 'KB_ARTICLE_UPDATED'
+      else 'KB_ARTICLE_DELETED'
+    end,
+    'Knowledge base article: ' || coalesce(new.title, old.title, 'Unknown')
+  );
+  return coalesce(new, old);
+end
+$$;
+revoke all on function app_private.audit_kb_change() from public, anon, authenticated;
+
+drop trigger if exists audit_kb_change on public.kb_articles;
+create trigger audit_kb_change
+after insert or update or delete on public.kb_articles
+for each row execute function app_private.audit_kb_change();
+
+create or replace function app_private.audit_asset_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.audit_log (user_id,action,details)
+  values (
+    auth.uid(),
+    case tg_op
+      when 'INSERT' then 'ASSET_CREATED'
+      when 'UPDATE' then 'ASSET_UPDATED'
+      else 'ASSET_DELETED'
+    end,
+    'Asset: ' || coalesce(new.name, old.name, 'Unknown')
+  );
+  return coalesce(new, old);
+end
+$$;
+revoke all on function app_private.audit_asset_change() from public, anon, authenticated;
+
+drop trigger if exists audit_asset_change on public.assets;
+create trigger audit_asset_change
+after insert or update or delete on public.assets
+for each row execute function app_private.audit_asset_change();
+
+create or replace function app_private.audit_user_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.role_id is distinct from old.role_id then
+    insert into public.audit_log (user_id,action,details)
+    values (
+      auth.uid(),
+      'USER_ROLE_CHANGED',
+      'Role updated for ' || coalesce(new.email, new.id::text) ||
+      ': ' || coalesce(old.role_id,'NULL') || ' -> ' || coalesce(new.role_id,'NULL')
+    );
+  end if;
+  return new;
+end
+$$;
+revoke all on function app_private.audit_user_change() from public, anon, authenticated;
+
+drop trigger if exists audit_user_change on public.users;
+create trigger audit_user_change
+after update on public.users
+for each row execute function app_private.audit_user_change();

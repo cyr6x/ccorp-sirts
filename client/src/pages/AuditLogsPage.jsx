@@ -2,7 +2,22 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
-const ACTIONS = ['','INCIDENT_CREATED','STATUS_CHANGED','ASSIGNMENT_CHANGED','SEVERITY_CHANGED','COMMENT_ADDED','USER_LOGIN','USER_LOGOUT'];
+const ACTIONS = [
+  '',
+  'INCIDENT_CREATED',
+  'STATUS_CHANGED',
+  'ASSIGNMENT_CHANGED',
+  'SEVERITY_CHANGED',
+  'COMMENT_ADDED',
+  'KB_ARTICLE_CREATED',
+  'KB_ARTICLE_UPDATED',
+  'KB_ARTICLE_DELETED',
+  'ASSET_CREATED',
+  'ASSET_UPDATED',
+  'ASSET_DELETED',
+  'USER_CREATED',
+  'USER_ROLE_CHANGED',
+];
 
 export default function AuditLogsPage() {
   const [logs,    setLogs]    = useState([]);
@@ -33,16 +48,19 @@ export default function AuditLogsPage() {
   const fmt = d => d ? new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : 'N/A';
 
   const ACTION_COLORS = {
-    INCIDENT_CREATED: 'text-red-400 bg-blue-500/10',
-    STATUS_CHANGED:   'text-yellow-400 bg-yellow-500/10',
-    COMMENT_ADDED:    'text-green-400 bg-green-500/10',
-    ASSIGNMENT_CHANGED:'text-orange-300 bg-orange-500/10',
-    SEVERITY_CHANGED:  'text-red-300 bg-red-500/10',
-    ESCALATED:        'text-orange-400 bg-orange-500/10',
-    RESOLVED:         'text-green-400 bg-green-500/10',
-    CLOSED:           'text-gray-400 bg-gray-500/10',
-    USER_LOGIN:       'text-teal-400 bg-teal-500/10',
-    USER_LOGOUT:      'text-gray-400 bg-gray-500/10',
+    INCIDENT_CREATED:   'text-red-300 bg-red-500/10',
+    STATUS_CHANGED:     'text-amber-300 bg-amber-500/10',
+    COMMENT_ADDED:      'text-emerald-300 bg-emerald-500/10',
+    ASSIGNMENT_CHANGED: 'text-orange-300 bg-orange-500/10',
+    SEVERITY_CHANGED:   'text-red-300 bg-red-500/10',
+    KB_ARTICLE_CREATED: 'text-zinc-300 bg-zinc-500/10',
+    KB_ARTICLE_UPDATED: 'text-zinc-300 bg-zinc-500/10',
+    KB_ARTICLE_DELETED: 'text-red-300 bg-red-500/10',
+    ASSET_CREATED:      'text-zinc-300 bg-zinc-500/10',
+    ASSET_UPDATED:      'text-zinc-300 bg-zinc-500/10',
+    ASSET_DELETED:      'text-red-300 bg-red-500/10',
+    USER_CREATED:       'text-emerald-300 bg-emerald-500/10',
+    USER_ROLE_CHANGED:  'text-orange-300 bg-orange-500/10',
   };
 
   return (

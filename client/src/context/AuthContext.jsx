@@ -106,10 +106,17 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Invalid email or password.');
     }
 
-    const profile = await fetchProfile(data.session.user);
-    setSession(data.session);
-    setCurrentUser(profile);
-    return profile;
+    try {
+      const profile = await fetchProfile(data.session.user);
+      setSession(data.session);
+      setCurrentUser(profile);
+      return profile;
+    } catch (profileError) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setCurrentUser(null);
+      throw profileError;
+    }
   };
 
   const logout = async () => {
