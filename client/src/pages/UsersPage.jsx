@@ -122,13 +122,13 @@ export default function UsersPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/8 border border-red-500/25 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/25 rounded-lg text-red-200 text-sm">
             {error}
           </div>
         )}
 
         {notice && (
-          <div className="mb-4 p-3 bg-emerald-500/8 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-sm">
             {notice}
           </div>
         )}
@@ -216,7 +216,7 @@ export default function UsersPage() {
                 <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-red-500/8 border border-red-500/15 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/15 flex items-center justify-center">
                         <span className="text-xs font-semibold text-red-300">{user.name?.charAt(0)?.toUpperCase()}</span>
                       </div>
                       <div>
