@@ -71,3 +71,27 @@ test('audit filter covers final workflow event names', async () => {
     assert.match(audit, new RegExp(action));
   }
 });
+
+
+test('asset create normalises empty INET values instead of sending an empty string', async () => {
+  const assets = await read('src/pages/AssetsPage.jsx');
+  assert.match(assets, /ip_address:\s*form\.ip_address\.trim\(\) \|\| null/);
+});
+
+test('knowledge-base delete reports database failures', async () => {
+  const article = await read('src/pages/KnowledgeBaseArticlePage.jsx');
+  assert.match(article, /deleteError/);
+  assert.match(article, /setError\(deleteError\.message\)/);
+});
+
+test('unsupported Tailwind opacity shorthands are not used on critical UI', async () => {
+  for (const path of [
+    'src/pages/LoginPage.jsx',
+    'src/pages/IncidentDetailPage.jsx',
+    'src/pages/NewIncidentPage.jsx',
+    'src/pages/UsersPage.jsx',
+  ]) {
+    const source = await read(path);
+    assert.doesNotMatch(source, /(?:bg|border|text)-[a-z]+-\d+\/8\b/);
+  }
+});
