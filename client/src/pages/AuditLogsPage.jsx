@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
-const ACTIONS = ['','INCIDENT_CREATED','STATUS_CHANGED','COMMENT_ADDED','ASSIGNED','ESCALATED','RESOLVED','CLOSED','USER_LOGIN','USER_LOGOUT'];
+const ACTIONS = ['','INCIDENT_CREATED','STATUS_CHANGED','ASSIGNMENT_CHANGED','SEVERITY_CHANGED','COMMENT_ADDED','USER_LOGIN','USER_LOGOUT'];
 
 export default function AuditLogsPage() {
   const [logs,    setLogs]    = useState([]);
@@ -33,10 +33,11 @@ export default function AuditLogsPage() {
   const fmt = d => d ? new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : 'N/A';
 
   const ACTION_COLORS = {
-    INCIDENT_CREATED: 'text-blue-400 bg-blue-500/10',
+    INCIDENT_CREATED: 'text-red-400 bg-blue-500/10',
     STATUS_CHANGED:   'text-yellow-400 bg-yellow-500/10',
     COMMENT_ADDED:    'text-green-400 bg-green-500/10',
-    ASSIGNED:         'text-purple-400 bg-purple-500/10',
+    ASSIGNMENT_CHANGED:'text-orange-300 bg-orange-500/10',
+    SEVERITY_CHANGED:  'text-red-300 bg-red-500/10',
     ESCALATED:        'text-orange-400 bg-orange-500/10',
     RESOLVED:         'text-green-400 bg-green-500/10',
     CLOSED:           'text-gray-400 bg-gray-500/10',
@@ -48,7 +49,7 @@ export default function AuditLogsPage() {
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Audit <span className="text-blue-400">Logs</span></h1>
+          <h1 className="text-2xl font-bold text-white">Audit log</h1>
           <p className="text-gray-500 text-sm mt-0.5">Immutable record of all system actions</p>
         </div>
 
@@ -78,7 +79,7 @@ export default function AuditLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800 font-mono">
-              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm font-sans"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
+              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm font-sans"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
               {!loading && logs.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm font-sans">No audit entries found.</td></tr>}
               {!loading && logs.map(log => (
                 <tr key={log.id} className="hover:bg-gray-800/20 transition-colors">
@@ -92,7 +93,7 @@ export default function AuditLogsPage() {
                   <td className="px-5 py-3 text-xs text-gray-400 font-sans max-w-xs truncate">{log.details || '\u2014'}</td>
                   <td className="px-5 py-3 hidden lg:table-cell text-xs font-sans">
                     {log.incident_id
-                      ? <Link to={`/incidents/${log.incident_id}`} className="text-blue-400 hover:text-blue-300 hover:underline truncate block max-w-[180px]">{log.incident?.title || log.incident_id}</Link>
+                      ? <Link to={`/incidents/${log.incident_id}`} className="text-red-400 hover:text-red-300 hover:underline truncate block max-w-[180px]">{log.incident?.title || log.incident_id}</Link>
                       : <span className="text-gray-600">\u2014</span>
                     }
                   </td>

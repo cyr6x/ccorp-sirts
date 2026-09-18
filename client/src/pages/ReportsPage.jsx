@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 
 const RANGES = [{ label:'Last 7 days', value:'7' }, { label:'Last 30 days', value:'30' }, { label:'Last 90 days', value:'90' }, { label:'All time', value:'all' }];
 const SEV_COLORS = { CRITICAL:'#ef4444', HIGH:'#f97316', MEDIUM:'#eab308', LOW:'#22c55e' };
-const CAT_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+const CAT_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#a1a1aa'];
 
 export default function ReportsPage() {
   const [range,     setRange]     = useState('30');
@@ -62,7 +62,7 @@ export default function ReportsPage() {
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Reports <span className="text-blue-400">&amp; Analytics</span></h1>
+            <h1 className="text-2xl font-bold text-white">Reports &amp; analytics</h1>
             <p className="text-gray-500 text-sm mt-0.5">Incident metrics for the selected period</p>
           </div>
           <select value={range} onChange={e=>setRange(e.target.value)} className="select">
@@ -74,7 +74,7 @@ export default function ReportsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
@@ -86,7 +86,7 @@ export default function ReportsPage() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <SummaryCard label="Resolved"        value={resolved.length} color="text-green-400" />
-              <SummaryCard label="MTTR (hours)"    value={mttr != null ? `${mttr}h` : 'N/A'} color="text-blue-400" />
+              <SummaryCard label="MTTR (hours)"    value={mttr != null ? `${mttr}h` : 'N/A'} color="text-red-400" />
               <SummaryCard label="Resolution Rate" value={incidents.length ? `${Math.round(resolved.length/incidents.length*100)}%` : 'N/A'} color="text-purple-400" />
               <SummaryCard label="Avg/Day"         value={range !== 'all' ? (incidents.length / parseInt(range)).toFixed(1) : 'N/A'} />
             </div>
@@ -112,7 +112,7 @@ export default function ReportsPage() {
                     <XAxis dataKey="name" tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} />
-                    <Bar dataKey="value" fill="#8b5cf6" radius={[4,4,0,0]} />
+                    <Bar dataKey="value" fill="#ef4444" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

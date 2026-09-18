@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { hasCapability } from '../lib/rbac.js';
 
 export default function KnowledgeBaseArticlePage() {
   const { id } = useParams();
@@ -14,7 +15,7 @@ export default function KnowledgeBaseArticlePage() {
   const [form,    setForm]    = useState({ title:'', summary:'', content:'', category:'' });
   const [saving,  setSaving]  = useState(false);
 
-  const canEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
+  const canEdit = hasCapability(currentUser?.role, 'kb.manage');
 
   useEffect(() => {
     (async () => {
@@ -49,8 +50,8 @@ export default function KnowledgeBaseArticlePage() {
   const CAT_COLORS = { PHISHING:'bg-orange-500/20 text-orange-400', MALWARE:'bg-red-500/20 text-red-400', UNAUTHORISED_ACCESS:'bg-purple-500/20 text-purple-400', DOS:'bg-yellow-500/20 text-yellow-400', OTHER:'bg-gray-500/20 text-gray-400' };
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '';
 
-  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
-  if (error)   return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center"><p className="text-gray-400">{error}</p><Link to="/knowledge-base" className="text-blue-400 text-sm mt-2 inline-block">Back to Knowledge Base</Link></div></div>;
+  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (error)   return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center"><p className="text-gray-400">{error}</p><Link to="/knowledge-base" className="text-red-400 text-sm mt-2 inline-block">Back to Knowledge Base</Link></div></div>;
 
   return (
     <div className="min-h-screen bg-gray-950 p-6 fade-in">

@@ -92,7 +92,7 @@ export default function IncidentsPage() {
       <div className="max-w-screen-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Incident <span className="text-blue-400">Registry</span></h1>
+            <h1 className="text-2xl font-bold text-white">Incident registry</h1>
             <p className="text-gray-500 text-sm mt-0.5">{filtered.length} of {incidents.length} incidents</p>
           </div>
           <Link to="/incidents/new" className="btn-primary flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function IncidentsPage() {
               {loading && (
                 <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-600 text-sm">
                   <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                     Loading incidents...
                   </span>
                 </td></tr>
