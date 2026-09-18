@@ -39,7 +39,15 @@ export default function AssetsPage() {
   const handleCreate = async e => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('assets').insert(form);
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      ip_address: form.ip_address.trim() || null,
+      os: form.os.trim() || null,
+      owner: form.owner.trim() || null,
+      notes: form.notes.trim() || null,
+    };
+    const { error } = await supabase.from('assets').insert(payload);
     if (error) { setError(error.message); setSaving(false); return; }
     setShowForm(false);
     setForm({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
