@@ -293,7 +293,7 @@ export default function IncidentDetailPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/8 border border-red-500/25 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/25 rounded-lg text-red-200 text-sm">
             {error}
           </div>
         )}
@@ -333,7 +333,7 @@ export default function IncidentDetailPage() {
 
                   {comments.map(comment => (
                     <div key={comment.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-red-500/8 border border-red-500/15 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/15 flex items-center justify-center shrink-0">
                         <span className="text-xs font-semibold text-red-300">
                           {(comment.author?.name || 'U')[0].toUpperCase()}
                         </span>
