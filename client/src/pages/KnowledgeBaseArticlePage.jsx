@@ -42,8 +42,15 @@ export default function KnowledgeBaseArticlePage() {
 
   const handleDelete = async () => {
     if (!window.confirm('Delete this article? This cannot be undone.')) return;
-    await supabase.from('kb_articles').delete().eq('id', id);
-    navigate('/knowledge-base');
+    setSaving(true);
+    setError('');
+    const { error: deleteError } = await supabase.from('kb_articles').delete().eq('id', id);
+    if (deleteError) {
+      setError(deleteError.message);
+      setSaving(false);
+      return;
+    }
+    navigate('/knowledge-base', { replace: true });
   };
 
   const CATEGORIES = ['PHISHING','MALWARE','UNAUTHORISED_ACCESS','DOS','OTHER'];
@@ -91,7 +98,7 @@ export default function KnowledgeBaseArticlePage() {
                 {canEdit && (
                   <div className="flex gap-2 shrink-0">
                     <button onClick={()=>setEditing(true)} className="px-3 py-1.5 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-xs transition-colors">Edit</button>
-                    <button onClick={handleDelete} className="px-3 py-1.5 rounded-lg border border-red-700/50 text-red-400 hover:bg-red-900/20 text-xs transition-colors">Delete</button>
+                    <button onClick={handleDelete} disabled={saving} className="px-3 py-1.5 rounded-lg border border-red-700/50 text-red-400 hover:bg-red-900/20 text-xs transition-colors disabled:opacity-50">Delete</button>
                   </div>
                 )}
               </div>
