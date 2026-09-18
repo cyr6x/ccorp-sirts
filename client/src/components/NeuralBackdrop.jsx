@@ -1,69 +1,180 @@
-const paths = [
-  'M-80 170 C120 60 250 250 470 130 S790 70 1040 210 S1320 240 1560 100',
-  'M-120 360 C130 250 300 430 520 320 S860 250 1080 390 S1390 430 1640 270',
-  'M-40 560 C180 450 350 620 600 520 S910 430 1190 570 S1450 600 1690 470',
-];
+import { useEffect, useRef } from 'react';
 
-const nodes = [
-  [120, 120], [270, 185], [430, 135], [610, 175], [790, 110], [980, 185], [1180, 140], [1380, 195],
-  [90, 330], [250, 385], [430, 315], [650, 350], [850, 285], [1050, 385], [1280, 335], [1490, 390],
-  [160, 540], [360, 585], [560, 515], [760, 565], [980, 490], [1200, 575], [1410, 525],
-];
+const NODE_COUNT = 54;
+const LINK_DISTANCE = 165;
+const POINTER_RADIUS = 190;
 
-const links = [
-  [0,9],[1,8],[1,10],[2,9],[2,11],[3,10],[3,12],[4,11],[4,13],[5,12],[5,14],[6,13],[6,15],
-  [8,17],[9,16],[9,18],[10,17],[10,19],[11,18],[11,20],[12,19],[12,21],[13,20],[13,22],[14,21],[15,22],
-];
+const seeded = (index, salt = 0) => {
+  const x = Math.sin((index + 1) * 9283.133 + salt * 77.17) * 43758.5453;
+  return x - Math.floor(x);
+};
 
-export default function NeuralBackdrop() {
+export default function NeuralBackdrop({ muted = false }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const pointer = { x: -9999, y: -9999, active: false };
+    let frame = 0;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let nodes = [];
+    let links = [];
+
+    const build = () => {
+      const cols = 9;
+      const rows = 6;
+      nodes = Array.from({ length: NODE_COUNT }, (_, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols) % rows;
+        const cellW = width / Math.max(cols - 1, 1);
+        const cellH = height / Math.max(rows - 1, 1);
+        return {
+          bx: col * cellW + (seeded(index, 1) - 0.5) * Math.min(110, cellW * 0.7),
+          by: row * cellH + (seeded(index, 2) - 0.5) * Math.min(95, cellH * 0.7),
+          phase: seeded(index, 3) * Math.PI * 2,
+          speed: 0.45 + seeded(index, 4) * 0.7,
+          radius: 1.1 + seeded(index, 5) * 1.2,
+        };
+      });
+
+      links = [];
+      for (let i = 0; i < nodes.length; i += 1) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          const dx = nodes[i].bx - nodes[j].bx;
+          const dy = nodes[i].by - nodes[j].by;
+          const distance = Math.hypot(dx, dy);
+          if (distance < LINK_DISTANCE && seeded(i * 59 + j, 7) > 0.36) {
+            links.push([i, j, distance]);
+          }
+        }
+      }
+    };
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(width * dpr));
+      canvas.height = Math.max(1, Math.round(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      build();
+    };
+
+    const onPointerMove = (event) => {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.active = true;
+    };
+
+    const onPointerLeave = () => {
+      pointer.active = false;
+      pointer.x = -9999;
+      pointer.y = -9999;
+    };
+
+    const render = (time) => {
+      ctx.clearRect(0, 0, width, height);
+
+      const rendered = nodes.map(node => {
+        const breath = reduceMotion ? 0 : Math.sin(time * 0.00055 * node.speed + node.phase);
+        let x = node.bx + breath * 3;
+        let y = node.by + breath * 9;
+        let influence = 0;
+
+        if (pointer.active) {
+          const dx = x - pointer.x;
+          const dy = y - pointer.y;
+          const distance = Math.hypot(dx, dy);
+          influence = Math.max(0, 1 - distance / POINTER_RADIUS);
+
+          if (influence > 0) {
+            const safe = Math.max(distance, 1);
+            x += (dx / safe) * influence * 10;
+            y -= influence * 34;
+          }
+        }
+
+        return { ...node, x, y, influence };
+      });
+
+      ctx.lineWidth = 1;
+      links.forEach(([aIndex, bIndex, baseDistance]) => {
+        const a = rendered[aIndex];
+        const b = rendered[bIndex];
+        const proximity = Math.max(a.influence, b.influence);
+        const alpha = (muted ? 0.045 : 0.075) + proximity * 0.22;
+        const red = Math.round(92 + proximity * 147);
+        ctx.strokeStyle = `rgba(${red}, 28, 36, ${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+
+        if (!reduceMotion && proximity > 0.14) {
+          const pulse = ((time * 0.00016 + baseDistance * 0.004) % 1);
+          const px = a.x + (b.x - a.x) * pulse;
+          const py = a.y + (b.y - a.y) * pulse;
+          ctx.fillStyle = `rgba(239, 68, 68, ${0.18 + proximity * 0.45})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 1.2 + proximity, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      rendered.forEach(node => {
+        const breathe = reduceMotion ? 0 : (Math.sin(time * 0.0012 * node.speed + node.phase) + 1) * 0.5;
+        const radius = node.radius + breathe * 0.55 + node.influence * 2.3;
+        const alpha = (muted ? 0.16 : 0.24) + node.influence * 0.66;
+
+        if (node.influence > 0.08) {
+          const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, 16 + node.influence * 18);
+          glow.addColorStop(0, `rgba(239, 68, 68, ${0.15 + node.influence * 0.24})`);
+          glow.addColorStop(1, 'rgba(239, 68, 68, 0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 20 + node.influence * 14, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (!reduceMotion) frame = requestAnimationFrame(render);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.documentElement.addEventListener('mouseleave', onPointerLeave);
+
+    if (reduceMotion) {
+      render(0);
+    } else {
+      frame = requestAnimationFrame(render);
+    }
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('pointermove', onPointerMove);
+      document.documentElement.removeEventListener('mouseleave', onPointerLeave);
+    };
+  }, [muted]);
+
   return (
-    <div className="neural-backdrop" aria-hidden="true">
-      <div className="neural-glow neural-glow-a" />
-      <div className="neural-glow neural-glow-b" />
-      <svg className="neural-svg" viewBox="0 0 1600 760" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <linearGradient id="signalLine" x1="0" x2="1">
-            <stop offset="0%" stopColor="#260506" />
-            <stop offset="48%" stopColor="#ef1b24" />
-            <stop offset="100%" stopColor="#43090b" />
-          </linearGradient>
-          <radialGradient id="nodeGlow">
-            <stop offset="0%" stopColor="#ff7b80" />
-            <stop offset="45%" stopColor="#ef1b24" />
-            <stop offset="100%" stopColor="#5b0a0d" />
-          </radialGradient>
-          <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="6" />
-          </filter>
-        </defs>
-
-        <g className="neural-mesh">
-          {links.map(([a,b], i) => (
-            <line
-              key={i}
-              x1={nodes[a][0]} y1={nodes[a][1]}
-              x2={nodes[b][0]} y2={nodes[b][1]}
-              className="mesh-link"
-            />
-          ))}
-        </g>
-
-        <g className="neural-chains">
-          {paths.map((d, i) => (
-            <path key={i} d={d} className={`chain-line chain-line-${i+1}`} pathLength="100" />
-          ))}
-        </g>
-
-        <g className="neural-nodes">
-          {nodes.map(([cx,cy], i) => (
-            <g key={i} style={{ '--delay': `${(i % 9) * 0.27}s` }}>
-              <circle cx={cx} cy={cy} r="18" fill="#ef1b24" opacity="0.07" filter="url(#softGlow)" />
-              <circle cx={cx} cy={cy} r="3.5" fill="url(#nodeGlow)" className="node-core" />
-              <circle cx={cx} cy={cy} r="9" className="node-ring" />
-            </g>
-          ))}
-        </g>
-      </svg>
+    <div className={`neural-backdrop ${muted ? 'neural-backdrop-muted' : ''}`} aria-hidden="true">
+      <canvas ref={canvasRef} className="neural-canvas" />
+      <div className="neural-ambient" />
       <div className="neural-grid" />
       <div className="neural-vignette" />
     </div>
