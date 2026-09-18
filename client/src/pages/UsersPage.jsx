@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const ROLES = ['ADMIN','SOC_LEAD','SOC_ANALYST'];
-
 export default function UsersPage() {
   const { currentUser } = useAuth();
   const [users,     setUsers]     = useState([]);
@@ -65,14 +63,14 @@ export default function UsersPage() {
 
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'N/A';
   const filtered = users.filter(u => !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
-  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-orange-400', SOC_ANALYST:'text-blue-400' };
+  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-orange-300', SOC_ANALYST_L1:'text-zinc-300', SOC_ANALYST_L2:'text-zinc-300', SOC_ANALYST_L3:'text-zinc-300', SOC_ANALYST:'text-zinc-300' };
 
   return (
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">User <span className="text-blue-400">Management</span></h1>
+            <h1 className="text-2xl font-semibold text-white">User <span className="text-red-400">Management</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">{users.length} registered users</p>
           </div>
           <button onClick={()=>setShowForm(v=>!v)} className="btn-primary flex items-center gap-2">
@@ -132,18 +130,18 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
+              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
               {!loading && filtered.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm">No users found.</td></tr>}
               {!loading && filtered.map(u => (
                 <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-600/30 flex items-center justify-center">
-                        <span className="text-xs font-bold text-blue-400">{u.name?.charAt(0)?.toUpperCase()}</span>
+                      <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                        <span className="text-xs font-bold text-red-400">{u.name?.charAt(0)?.toUpperCase()}</span>
                       </div>
                       <div>
                         <p className="font-medium text-gray-100">{u.name}</p>
-                        {u.id === currentUser.id && <span className="text-xs text-blue-400">(you)</span>}
+                        {u.id === currentUser.id && <span className="text-xs text-red-400">(you)</span>}
                       </div>
                     </div>
                   </td>
@@ -153,7 +151,7 @@ export default function UsersPage() {
                       value={u.role_id||''}
                       onChange={e => handleRoleChange(u.id, e.target.value)}
                       disabled={u.id === currentUser.id}
-                      className={`text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500 ${ROLE_COLORS[u.role?.name]||'text-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500 ${ROLE_COLORS[u.role?.name]||'text-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
