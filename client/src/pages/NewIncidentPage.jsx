@@ -90,7 +90,7 @@ export default function NewIncidentPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/8 border border-red-500/25 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/25 rounded-lg text-red-200 text-sm">
             {error}
           </div>
         )}
