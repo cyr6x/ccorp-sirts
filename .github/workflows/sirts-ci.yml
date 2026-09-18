@@ -1,0 +1,42 @@
+name: SIRTS CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/sirts-attached-features
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: Test, build and audit client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: Unit and source-contract tests
+        run: npm test
+
+      - name: Production build
+        run: npx vite build
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
