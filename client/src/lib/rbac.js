@@ -63,7 +63,7 @@ export const allowedStatusesFor = (role) => {
 export const canWorkIncident = (role, incident, userId) => {
   if (!incident || !userId) return false;
   if (isSeniorIncidentRole(role)) return true;
-  return incident.created_by === userId || incident.assigned_to === userId;
+  return incident.assigned_to === userId;
 };
 
 export const canClaimIncident = (role, incident) =>
@@ -72,7 +72,7 @@ export const canClaimIncident = (role, incident) =>
 export const canEscalateIncident = (role, incident, userId) =>
   hasCapability(role, 'incidents.escalate') &&
   Boolean(incident) &&
-  (incident.assigned_to === userId || incident.created_by === userId);
+  incident.assigned_to === userId;
 
 export const canChangeStatus = (role, incident, userId) =>
   canWorkIncident(role, incident, userId) && allowedStatusesFor(role).length > 0;
