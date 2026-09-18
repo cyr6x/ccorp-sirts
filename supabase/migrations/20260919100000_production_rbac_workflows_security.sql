@@ -18,6 +18,23 @@ $$;
 revoke all on function app_private.current_role() from public, anon;
 grant execute on function app_private.current_role() to authenticated;
 
+insert into public.roles (id,name,permissions) values
+  ('ADMIN','ADMIN','{}'::jsonb),
+  ('SOC_LEAD','SOC_LEAD','{}'::jsonb),
+  ('SOC_ANALYST_L1','SOC_ANALYST_L1','{}'::jsonb),
+  ('SOC_ANALYST_L2','SOC_ANALYST_L2','{}'::jsonb),
+  ('SOC_ANALYST_L3','SOC_ANALYST_L3','{}'::jsonb)
+on conflict (id) do nothing;
+
+-- Upgrade any legacy generic analyst profile before retiring the old role.
+update public.users
+set role_id='SOC_ANALYST_L3'
+where role_id='SOC_ANALYST';
+
+delete from public.roles
+where id='SOC_ANALYST'
+  and not exists (select 1 from public.users where role_id='SOC_ANALYST');
+
 update public.roles
 set permissions = case id
   when 'ADMIN' then '{"all_access":true,"audit_read":true,"reports_read":true,"users_manage":true,"incident_assign_any":true,"incident_close":true,"kb_manage":true,"assets_manage":true}'::jsonb
@@ -143,14 +160,20 @@ with check (created_by=auth.uid());
 create policy incidents_update_visible on public.incidents for update to authenticated
 using (
   app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3')
-  or created_by=auth.uid()
   or assigned_to=auth.uid()
   or (assigned_to is null and app_private.current_role() in ('SOC_ANALYST_L1','SOC_ANALYST_L2'))
 )
 with check (
-  app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3','SOC_ANALYST_L2')
-  or created_by=auth.uid()
+  app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3')
   or assigned_to=auth.uid()
+  or (
+    app_private.current_role()='SOC_ANALYST_L2'
+    and exists (
+      select 1 from public.users target
+      where target.id=assigned_to
+        and target.role_id in ('SOC_ANALYST_L3','SOC_LEAD')
+    )
+  )
 );
 
 create policy incidents_delete_admin on public.incidents for delete to authenticated
@@ -187,9 +210,6 @@ with check (
 
 create policy audit_log_read_privileged on public.audit_log for select to authenticated
 using (app_private.current_role() in ('ADMIN','SOC_LEAD'));
-create policy audit_log_insert_own on public.audit_log for insert to authenticated
-with check (user_id=auth.uid());
-
 create policy incident_updates_read_visible on public.incident_updates for select to authenticated
 using (
   app_private.current_role() in ('ADMIN','SOC_LEAD','SOC_ANALYST_L3')
