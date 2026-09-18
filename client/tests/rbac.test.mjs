@@ -58,6 +58,10 @@ test('claim, ownership, and escalation rules are enforced', () => {
   assert.equal(canWorkIncident(ROLES.SOC_ANALYST_L1, assigned, 'other'), false);
   assert.equal(canEscalateIncident(ROLES.SOC_ANALYST_L2, assigned, userId), true);
   assert.equal(canEscalateIncident(ROLES.SOC_ANALYST_L1, assigned, userId), false);
+
+  const handedOff = { created_by: userId, assigned_to: 'senior-analyst' };
+  assert.equal(canWorkIncident(ROLES.SOC_ANALYST_L1, handedOff, userId), false);
+  assert.equal(canEscalateIncident(ROLES.SOC_ANALYST_L2, handedOff, userId), false);
 });
 
 test('assignment targets narrow by role', () => {
