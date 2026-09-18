@@ -1,43 +1,40 @@
 # CCorp SIRTS
 
-**Security Incident Response & Ticketing System** — my final year project for BSc (Hons) Cybersecurity & Networking.
+**Security Incident Response & Ticketing System** — final year project for BSc (Hons) Cybersecurity & Networking.
 
-A full-stack SOC ticketing tool: report, triage, and resolve incidents with role-based access (Admin / SOC Lead / Analyst / Viewer), a dashboard with incident stats, CVE enrichment via the NVD API on incident creation, and a full audit log of every status change.
+A full-stack SOC ticketing tool built on React + Supabase: report, triage, and resolve security incidents with role-based access control, a live operations dashboard, SLA tracking, knowledge base, asset inventory, and a full immutable audit log.
 
-I built it to combine two things my degree covers separately — incident response process (mapped to NIST SP 800-61) and secure full-stack development — into one working system, rather than a slide deck.
+Mapped to NIST SP 800-61 incident response lifecycle (Identify → Contain → Eradicate → Recover → Lessons Learned).
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        BROWSER                              │
-│         React 18 + Vite + Tailwind CSS + Recharts           │
-│   LoginPage │ Dashboard │ Incidents │ Detail │ Admin Panel  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP/REST (JWT Bearer Token)
-┌──────────────────────▼──────────────────────────────────────┐
-│                   EXPRESS.JS API (Port 5000)                 │
-│  Auth Middleware → Role Guard → Controllers → Prisma ORM    │
-│                                                             │
-│  /api/auth    /api/incidents    /api/users    /api/dashboard │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              PostgreSQL Database (via Prisma ORM)           │
-│   Users │ Incidents │ Comments │ AuditLogs │ Sessions       │
-└─────────────────────────────────────────────────────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  NVD CVE API (External) │
-          │  CVE enrichment on      │
-          │  incident creation      │
-          └─────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                         BROWSER                              │
+│     React 18 + Vite + Tailwind CSS + Recharts                │
+│                                                              │
+│  Login │ Dashboard │ Incidents │ Detail │ KB │ Assets │ Audit│
+└────────────────────────┬─────────────────────────────────────┘
+                         │ HTTPS + Supabase JWT (anon key)
+┌────────────────────────▼─────────────────────────────────────┐
+│                  SUPABASE (BaaS)                              │
+│                                                              │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐  │
+│  │  Auth       │  │  PostgREST   │  │  Realtime          │  │
+│  │  (email +   │  │  (REST API   │  │  (WebSocket push   │  │
+│  │   password) │  │   over RLS)  │  │   on INSERT/UPDATE)│  │
+│  └─────────────┘  └──────────────┘  └────────────────────┘  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │               PostgreSQL Database                      │  │
+│  │  users │ roles │ incidents │ comments │ audit_log      │  │
+│  │  incident_updates │ notifications │ kb_articles        │  │
+│  │  assets                                                │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
 ```
-
-`[SCREENSHOT: dashboard view]`
-`[GIF: creating an incident → triaging → resolving, end to end]`
 
 ---
 
@@ -46,25 +43,26 @@ I built it to combine two things my degree covers separately — incident respon
 | Layer | Technology |
 |---|---|
 | **Frontend** | React 18, Vite, Tailwind CSS, React Router v6, Recharts |
-| **Backend** | Node.js, Express.js (ES Modules) |
-| **Database** | PostgreSQL via Prisma ORM |
-| **Auth** | JWT (jsonwebtoken), bcryptjs |
-| **External API** | NVD CVE API (vulnerability enrichment) |
-| **API Style** | RESTful JSON |
+| **Backend / Auth** | Supabase (PostgREST + Auth + Realtime) |
+| **Database** | PostgreSQL (hosted on Supabase) |
+| **Auth** | Supabase Auth — email/password, JWT |
+| **Realtime** | Supabase Realtime — WebSocket subscriptions |
+| **Access Control** | Row Level Security (RLS) policies per role |
 
 ---
 
 ## Key Features
 
-- **Role-Based Access Control** — ADMIN, SOC_LEAD, ANALYST, VIEWER roles with protected routes
-- **Incident Lifecycle Management** — Create, update, escalate, resolve, and close incidents
-- **SOC Dashboard** — Bar charts (incidents by day), pie charts (by category), stat cards, recent incidents feed
-- **Incident Detail View** — Full incident metadata, status updates, comments/notes, audit log timeline
-- **CVE Enrichment** — Incidents can be linked to CVE IDs with live data pulled from the NVD API
-- **Admin Panel** — User role management and incident assignment in a tabbed interface
-- **Audit Logging** — Every status change and action is logged with timestamp and actor
-- **JWT Authentication** — Stateless auth with HTTP-only considerations
-- **Dark Cybersecurity UI** — Tailwind CSS dark theme with severity/status colour-coded badges
+- **Role-Based Access Control** — ADMIN, SOC_LEAD, SOC_ANALYST with RLS-enforced data scoping
+- **Incident Lifecycle** — Create, assign, update, escalate, resolve, close with full audit trail
+- **Live Dashboard** — Bar/pie charts (by day, category, severity), MTTR, KDPA deadline alerts
+- **SLA Tracking** — Per-severity targets (CRITICAL 4h, HIGH 8h, MEDIUM 24h, LOW 72h) with breach indicators
+- **Knowledge Base** — SOC playbooks and threat intel articles; create/edit for Lead/Admin
+- **Asset Inventory** — Register and track servers, workstations, network devices with risk levels
+- **Audit Logs** — Immutable paginated log of every action, gated by `audit_read` permission
+- **Reports & Analytics** — Filterable by date range; resolution rate, MTTR, by-category breakdown
+- **Realtime Updates** — Incident list and detail pages update live via Supabase WebSocket channels
+- **User Management** — Admin can add users and change roles in-app
 
 ---
 
@@ -72,167 +70,119 @@ I built it to combine two things my degree covers separately — incident respon
 
 ```
 ccorp-sirts/
-├── client/                  # React frontend (Vite)
+├── client/                      # React frontend (Vite)
+│   ├── .env                     # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (not committed)
+│   ├── .env.example             # Template
 │   └── src/
-│       ├── api/             # Axios instance
-│       ├── components/      # Navbar
-│       ├── context/         # AuthContext (JWT)
-│       └── pages/           # All page components
+│       ├── lib/
+│       │   └── supabaseClient.js    # Singleton Supabase client
+│       ├── context/
+│       │   └── AuthContext.jsx      # Session restore, onAuthStateChange, profile fetch
+│       ├── components/
+│       │   └── Navbar.jsx           # Role-gated nav links
+│       └── pages/
 │           ├── LoginPage.jsx
 │           ├── DashboardPage.jsx
-│           ├── IncidentsPage.jsx
-│           ├── IncidentDetailPage.jsx
+│           ├── IncidentsPage.jsx        # + Realtime INSERT/UPDATE
+│           ├── IncidentDetailPage.jsx   # + Realtime comments + status push
 │           ├── NewIncidentPage.jsx
-│           └── UsersPage.jsx
-│
-└── server/                  # Express backend
-    ├── controllers/         # Business logic
-    ├── middleware/          # Auth + Role guards
-    ├── prisma/
-    │   ├── schema.prisma    # DB schema
-    │   └── seed.js          # Demo data seeder
-    └── routes/              # API routes
+│           ├── UsersPage.jsx
+│           ├── ReportsPage.jsx
+│           ├── KnowledgeBasePage.jsx
+│           ├── KnowledgeBaseArticlePage.jsx
+│           ├── AssetsPage.jsx
+│           └── AuditLogsPage.jsx
+└── supabase/
+    └── migrations/
+        ├── 20260917160000_chunk0_schema.sql   # Table renames, status enum, RLS policies, triggers
+        └── 20260917160100_chunk1_new_tables.sql # Auth trigger, kb_articles, assets, policy fixes
 ```
 
 ---
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js >= 18
-- PostgreSQL database
-- npm or yarn
-
-### 1. Clone & Install
+### 1. Clone
 
 ```bash
-git clone https://github.com/cyr6x/ccorp-sirts.git
+git clone https://github.com/baaya/ccorp-sirts.git
 cd ccorp-sirts
+```
 
-# Install server dependencies
-cd server && npm install
+### 2. Install frontend dependencies
 
-# Install client dependencies
+```bash
 cd client && npm install
 ```
 
-### 2. Configure Environment
+### 3. Configure environment
 
 ```bash
-# server/.env (use .env.example as reference)
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/ccorp_sirts"
-JWT_SECRET="your-super-secret-jwt-key"
-PORT=5000
-DIRECT_URL="postgresql://USER:PASSWORD@localhost:5432/ccorp_sirts"
-
-# client/.env
-VITE_API_URL=http://localhost:5000/api
+# client/.env  (never commit — already in .gitignore)
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-public-key>
 ```
 
-### 3. Database Setup
+Both values are in your Supabase dashboard → Settings → API.
+
+### 4. Run migrations
+
+In the Supabase SQL editor, run (in order):
+
+1. `supabase/migrations/20260917160000_chunk0_schema.sql`
+2. `supabase/migrations/20260917160100_chunk1_new_tables.sql`
+
+Or via the Supabase CLI:
 
 ```bash
-cd server
-
-# Run migrations
-npx prisma migrate dev --name init
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed demo data
-npx prisma db seed
+supabase db push
 ```
 
-### 4. Run the Dev Servers
+### 5. Create users
+
+In Supabase dashboard → Authentication → Users, create at least one user.
+The trigger in chunk1 automatically creates their `public.users` row.
+Update their `role_id` to `ADMIN` in the Table Editor to get full access.
+
+### 6. Run the dev server
 
 ```bash
-# Terminal 1 — Backend (port 5000)
-cd server && npm run dev
-
-# Terminal 2 — Frontend (port 5173)
 cd client && npm run dev
 ```
 
-Open http://localhost:5173 in your browser.
+Open http://localhost:3000
 
 ---
 
-## Demo Credentials
+## Roles
 
-| Role | Email | Password | Access |
-|---|---|---|---|
-| Admin | `admin@ccorp.local` | `Admin@1234` | Full system access |
-| SOC Lead | `lead@ccorp.local` | `Lead@1234` | Manage incidents, assign analysts |
-| Analyst | `analyst@ccorp.local` | `Analyst@1234` | Create and work incidents |
-| Viewer | `viewer@ccorp.local` | `Viewer@1234` | Read-only access |
-
----
-
-## API Reference
-
-### Authentication
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/login` | Login, returns JWT |
-| POST | `/api/auth/register` | Register new user |
-| GET | `/api/auth/me` | Get current user |
-
-### Incidents
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/incidents` | List all incidents |
-| GET | `/api/incidents/:id` | Get incident + comments + audit log |
-| POST | `/api/incidents` | Create new incident |
-| PATCH | `/api/incidents/:id` | Update incident |
-| DELETE | `/api/incidents/:id` | Delete (Admin only) |
-| POST | `/api/incidents/:id/comments` | Add comment |
-
-### Users
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/users` | List all users (Admin) |
-| PATCH | `/api/users/:id` | Update user role (Admin) |
-
-### Dashboard
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/dashboard/stats` | Incident stats for dashboard charts |
+| Role | Access |
+|---|---|
+| `ADMIN` | Full access to all modules including Users, Audit Logs, Reports |
+| `SOC_LEAD` | All incident ops + Audit Logs + Reports; no user management |
+| `SOC_ANALYST` | Create incidents; view/update only incidents assigned to them (enforced by RLS) |
 
 ---
 
-## Incident Categories
+## SLA Targets
 
-`PHISHING` `MALWARE` `UNAUTHORIZED_ACCESS` `DDoS` `DATA_BREACH` `INSIDER_THREAT` `OTHER`
-
-## Severity Levels
-
-| Level | Colour | SLA |
+| Severity | Target | Colour |
 |---|---|---|
-| CRITICAL | 🔴 Red | Immediate response required |
-| HIGH | 🟠 Orange | Respond within 1 hour |
-| MEDIUM | 🟡 Yellow | Respond within 4 hours |
-| LOW | 🟢 Green | Respond within 24 hours |
+| CRITICAL | 4 hours | Red |
+| HIGH | 8 hours | Orange |
+| MEDIUM | 24 hours | Yellow |
+| LOW | 72 hours | Green |
+
+SLA breach indicators appear on the incident list and detail pages.
 
 ---
 
 ## What this demonstrates
 
-Final year project for BSc (Hons) Cybersecurity and Networking — incident response workflow aligned to NIST SP 800-61 (Identify → Contain → Eradicate → Recover → Lessons Learned), combined with secure full-stack development: JWT auth, role-based authorisation, password hashing, protected routes, and input validation throughout.
-
----
-
-## Roadmap
-
-- [ ] Record a demo GIF
-- [ ] Export the architecture as a proper diagram
-- [ ] Add CVSS score display to CVE enrichment
-- [ ] Email notification on CRITICAL incident creation
-- [ ] Dockerise the full stack for one-command startup
+Final year project for BSc (Hons) Cybersecurity and Networking. Combines incident response process (NIST SP 800-61) with secure full-stack development: Supabase Auth JWT sessions, Row Level Security enforcing role-based data access at the database layer, realtime WebSocket subscriptions, and a complete CRUD lifecycle across 8 modules — all without a custom backend server.
 
 ---
 
 ## License
 
-MIT — Academic use permitted with attribution.
+MIT — academic use permitted with attribution.

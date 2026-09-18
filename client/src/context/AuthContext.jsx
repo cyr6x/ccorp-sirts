@@ -1,39 +1,100 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient.js';
 
 const AuthContext = createContext(null);
 
-// Mock users matching the seeded database
-const MOCK_USERS = [
-  { id: 'mock-admin-1', name: 'Alice Admin', email: 'admin@ccorp.local', password: 'Admin@1234', role: 'ADMIN' },
-  { id: 'mock-lead-1', name: 'Sam Lead', email: 'lead@ccorp.local', password: 'Lead@1234', role: 'SOC_LEAD' },
-  { id: 'mock-analyst-1', name: 'John Analyst', email: 'analyst@ccorp.local', password: 'Analyst@1234', role: 'ANALYST' },
-    { id: 'mock-viewer-1', name: 'Val Viewer', email: 'viewer@ccorp.local', password: 'Viewer@1234', role: 'VIEWER' },
-];
+const PREVIEW_ACCOUNT = {
+  email: 'alice@ccorp.local',
+  password: 'Demo@1234',
+};
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('sirts_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
 
-  const login = async (email, password) => {
-    const user = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
+  const fetchProfile = async (authUser) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*, role:roles(id, name, permissions)')
+      .eq('id', authUser.id)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      role: data.role?.name ?? 'SOC_ANALYST_L3',
+      permissions: data.role?.permissions ?? {},
+      role_id: data.role_id,
+    };
+  };
+
+  const hydrateSession = async (nextSession) => {
+    setSession(nextSession);
+    if (!nextSession?.user) {
+      setCurrentUser(null);
+      return;
+    }
+
+    const profile = await fetchProfile(nextSession.user);
+    setCurrentUser(profile);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const bootstrap = async () => {
+      try {
+        setAuthError('');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        let nextSession = sessionData.session;
+
+        if (!nextSession) {
+          const { data, error } = await supabase.auth.signInWithPassword(PREVIEW_ACCOUNT);
+          if (error) throw error;
+          nextSession = data.session;
+        }
+
+        if (mounted) await hydrateSession(nextSession);
+      } catch (error) {
+        if (mounted) {
+          setAuthError(error.message || 'Unable to establish preview session.');
+          setCurrentUser(null);
+          setSession(null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, nextSession) => {
+        if (!mounted || !nextSession?.user) return;
+        try {
+          await hydrateSession(nextSession);
+          setAuthError('');
+        } catch (error) {
+          setAuthError(error.message || 'Unable to load preview profile.');
+        }
+      }
     );
-    if (!user) throw new Error('Invalid credentials');
-    const { password: _, ...safeUser } = user;
-    localStorage.setItem('sirts_user', JSON.stringify(safeUser));
-    setCurrentUser(safeUser);
-    return safeUser;
-  };
 
-  const logout = () => {
-    localStorage.removeItem('sirts_user');
-    setCurrentUser(null);
-  };
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, session, loading, authError }}>
       {children}
     </AuthContext.Provider>
   );
