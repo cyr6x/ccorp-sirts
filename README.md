@@ -53,7 +53,7 @@ Mapped to NIST SP 800-61 incident response lifecycle (Identify → Contain → E
 
 ## Key Features
 
-- **Role-Based Access Control** — ADMIN, SOC_LEAD, SOC_ANALYST with RLS-enforced data scoping
+- **Role-Based Access Control** — ADMIN, SOC_LEAD, SOC_ANALYST_L1/L2/L3 with RLS-enforced data scoping and tier-specific incident actions
 - **Incident Lifecycle** — Create, assign, update, escalate, resolve, close with full audit trail
 - **Live Dashboard** — Bar/pie charts (by day, category, severity), MTTR, KDPA deadline alerts
 - **SLA Tracking** — Per-severity targets (CRITICAL 4h, HIGH 8h, MEDIUM 24h, LOW 72h) with breach indicators
@@ -129,8 +129,8 @@ Both values are in your Supabase dashboard → Settings → API.
 
 In the Supabase SQL editor, run (in order):
 
-1. `supabase/migrations/20260917160000_chunk0_schema.sql`
-2. `supabase/migrations/20260917160100_chunk1_new_tables.sql`
+1. Base schema migrations under `supabase/migrations/`
+2. `20260919100000_production_rbac_workflows_security.sql` for the final tiered RBAC, KB/assets, audit automation, constraints and indexes
 
 Or via the Supabase CLI:
 
@@ -140,9 +140,8 @@ supabase db push
 
 ### 5. Create users
 
-In Supabase dashboard → Authentication → Users, create at least one user.
-The trigger in chunk1 automatically creates their `public.users` row.
-Update their `role_id` to `ADMIN` in the Table Editor to get full access.
+Bootstrap the first administrator in Supabase Auth and assign its `public.users.role_id` to `ADMIN`.
+After that, administrators create staff accounts from **Users** in SIRTS through the protected `admin-create-user` Edge Function. No demo or shared default credentials are shipped.
 
 ### 6. Run the dev server
 
@@ -158,9 +157,11 @@ Open http://localhost:3000
 
 | Role | Access |
 |---|---|
-| `ADMIN` | Full access to all modules including Users, Audit Logs, Reports |
-| `SOC_LEAD` | All incident ops + Audit Logs + Reports; no user management |
-| `SOC_ANALYST` | Create incidents; view/update only incidents assigned to them (enforced by RLS) |
+| `ADMIN` | Full platform access; staff management, audit, reports, assignment, closure |
+| `SOC_LEAD` | Team-wide incident operations, assignment/closure, audit, reports, KB/assets management |
+| `SOC_ANALYST_L3` | Senior analyst; team-wide incident handling, assignment/resolution, KB/assets management |
+| `SOC_ANALYST_L2` | Claim assigned/queue incidents, investigate, resolve, and escalate to L3/Lead |
+| `SOC_ANALYST_L1` | Claim queue incidents, investigate, comment, and progress active incidents |
 
 ---
 
@@ -174,6 +175,14 @@ Open http://localhost:3000
 | LOW | 72 hours | Green |
 
 SLA breach indicators appear on the incident list and detail pages.
+
+---
+
+## Verification
+
+The Vercel build runs the Node test suite before `vite build`. The tests assert the RBAC matrix, status transitions, assignment/escalation targets, route guards, absence of demo credentials, protected admin user provisioning, asset lifecycle values, and the interactive background contract.
+
+Database verification should additionally include Supabase security-advisor review plus RLS tests for each staff tier. The application relies on RLS as the server-side authorization boundary; hiding a button in React is never treated as the security control.
 
 ---
 
