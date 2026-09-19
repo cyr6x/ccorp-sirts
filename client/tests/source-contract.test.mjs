@@ -6,7 +6,7 @@ const read = path => readFile(new URL(`../${path}`, import.meta.url),'utf8');
 
 test('development client is pinned only to isolated fresh Supabase', async () => {
   const source = await read('src/lib/supabaseClient.js');
-  assert.match(source,/oslthmbnukpkywapdkje\.supabase\.co/);
+  assert.match(source,/pvtissqcpskpxlduxuta\.supabase\.co/);
   assert.doesNotMatch(source,/tvjyllnfuptdcbirjvev\.supabase\.co/);
   assert.doesNotMatch(source,/service_role/i);
 });
