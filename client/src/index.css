@@ -378,3 +378,116 @@
     transform: none;
   }
 }
+
+
+.global-search {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  height: 38px;
+  padding: 0 .8rem;
+  border-radius: 8px;
+  background: rgba(16,16,18,.72);
+  border: 1px solid rgba(255,255,255,.075);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.global-search:focus-within {
+  background: rgba(18,18,21,.92);
+  border-color: rgba(239,68,68,.28);
+  box-shadow: 0 0 0 3px rgba(239,68,68,.055);
+}
+
+.global-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #e4e4e7;
+  font-size: 12px;
+}
+
+.global-search-input::placeholder {
+  color: #52525b;
+}
+
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.085);
+  background: rgba(10,10,12,.98);
+  box-shadow: 0 24px 70px rgba(0,0,0,.48);
+  backdrop-filter: blur(22px);
+}
+
+.global-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: .7rem .8rem;
+  color: #a1a1aa;
+  font-size: 12px;
+  text-align: left;
+  transition: background .15s ease, color .15s ease;
+}
+
+.global-search-result:hover,
+.global-search-result:focus-visible {
+  outline: 0;
+  color: white;
+  background: rgba(239,68,68,.07);
+}
+
+.nav-drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(320px, 86vw);
+  background: rgba(9,9,11,.985);
+  border-right: 1px solid rgba(255,255,255,.085);
+  box-shadow: 28px 0 80px rgba(0,0,0,.42);
+  backdrop-filter: blur(24px);
+}
+
+.drawer-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .75rem .85rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: #71717a;
+  font-size: 13px;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.drawer-link:hover {
+  color: #e4e4e7;
+  background: rgba(255,255,255,.025);
+  border-color: rgba(255,255,255,.05);
+}
+
+.drawer-link-active {
+  color: #fff;
+  background: rgba(239,68,68,.075);
+  border-color: rgba(239,68,68,.16);
+}
+
+@media (max-width: 640px) {
+  .global-search {
+    height: 36px;
+  }
+
+  .global-search-input {
+    font-size: 11px;
+  }
+}
