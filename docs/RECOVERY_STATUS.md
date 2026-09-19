@@ -23,7 +23,7 @@
 
 ## Verification completed
 
-- Eight local automated tests pass, including baseline SQL execution in PGlite, five-role lookup, anonymous denial, cross-user row isolation, profile self-promotion denial, direct assignment and workflow restrictions, forged audit denial, and KB/assets write restrictions.
+- Nine local automated tests pass, including the full migration chain in PGlite, five-role lookup, anonymous denial, cross-user row isolation, profile self-promotion denial, direct assignment and workflow restrictions, forged audit denial, KB/assets write restrictions, live asset linking, KB source traceability, comment auditing, and SLA deadlines.
 - Production build passes without backend variables and renders the deliberate setup-pending state. This prevents Git pushes from causing failed Vercel builds while Preview variables are absent.
 - Live Supabase API UAT passed for ADMIN, SOC_LEAD, SOC_ANALYST_L1, SOC_ANALYST_L2, and SOC_ANALYST_L3:
   - correct-password login, wrong-password rejection, identity/profile resolution, and logout;
@@ -36,7 +36,8 @@
   - non-admin staff-provisioning denial;
   - authenticated Realtime incident delivery.
 - Supabase security advisor reports no schema/RLS findings. Its one warning is that hosted Auth leaked-password protection is disabled.
-- Performance advisor reports only unused-index informational notices, expected before production traffic.
+- Performance advisor reports only unused-index informational notices, expected before production traffic. Its missing foreign-key index finding was corrected.
+- The live schema now includes incident/asset relationships, one-to-one incident/knowledge-article traceability, comment audit triggers, truthful incident action labels, and high/critical SLA notification triggers.
 
 ## Vercel status and remaining gate
 
@@ -44,18 +45,18 @@ The latest recovery-branch deployment is READY at:
 
 `https://ccorp-sirts-git-rebuild-morning-sirts-cs-projects-020d9389.vercel.app`
 
-It intentionally shows setup-pending until these variables are added to Vercel Preview, scoped only to Git branch `rebuild/morning-sirts`:
+The three backend variables below are configured in Vercel Preview, scoped to Git branch `rebuild/morning-sirts`:
 
 ```env
 VITE_SUPABASE_URL=https://cudagansojpjtligqewe.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<new project's sb_publishable key>
+VITE_SUPABASE_PUBLISHABLE_KEY=<fresh project's sb_publishable key>
 VITE_SUPABASE_PROJECT_REF=cudagansojpjtligqewe
 ```
 
-The connected Vercel capability available during this recovery can inspect and deploy but cannot mutate project environment variables. Add the variables in the Vercel project settings, then redeploy the recovery branch.
+Commit `5686cc6db580334957698afbf138cd68353c22eb` deployed successfully from GitHub. Vercel reports the deployment READY with no runtime errors.
 
-After that, complete browser UAT for refresh/deep links, desktop/mobile navigation, forms, session refresh persistence, admin-session preservation during user creation, full CRUD screens, reports, empty/error states, and large-list pagination. Browser automation in the current runner was unavailable, so no visual/browser pass is claimed.
+Browser UAT remains incomplete because Vercel Deployment Protection requires a temporary access link and browser authorization was not granted. Complete refresh/deep-link, desktop/mobile, session persistence, forms, role navigation, full CRUD, reports, empty/error-state, and large-list pagination checks before merge.
 
-Also enable hosted Auth leaked-password protection and disable public sign-ups in Supabase settings. Locked profiles already prevent public sign-ups from obtaining an application role, but both hosted safeguards should be enabled before production.
+Hosted Auth has two explicit production blockers. Leaked-password protection is available only on Supabase Pro and cannot be enabled on the current Free organisation. Disabling public sign-ups was attempted in the dashboard, but Supabase rejected the save with `failed to update Auth config`. Locked profiles still prevent public sign-ups from obtaining an application role, but both hosted controls must be resolved before production.
 
-Do not merge, tag stable, promote to production, or claim the restoration complete until the branch-specific Vercel variables and browser gate pass.
+Do not merge, tag stable, promote to production, or claim the restoration complete until browser UAT and the two hosted Auth blockers pass.

@@ -6,7 +6,7 @@ Original main: `09c4c7f51f308226258d1b716c40758750fb927e`, preserved by `backup/
 
 This branch restores the morning React/Supabase modules and red/black neural visual system. No later hardening commits were merged or cherry-picked. Recovery-specific fixes are applied on top of that exact snapshot.
 
-The isolated backend now exists as `CCORP_SIRTS_REBUILD` (`cudagansojpjtligqewe`) in the existing organisation. The clean schema, Auth/profile repair, role policies, Realtime publication, and `admin-create-user` Edge Function are deployed. Live API UAT passed for all five roles. The recovery branch is still **not ready to merge or promote** until its Vercel Preview variables are scoped to this branch and browser UAT passes.
+The isolated backend now exists as `CCORP_SIRTS_REBUILD` (`cudagansojpjtligqewe`) in the existing organisation. The clean schema, Auth/profile repair, role policies, Realtime publication, and `admin-create-user` Edge Function are deployed. Live API UAT passed for all five roles, and the branch-specific Vercel preview is configured and READY. The recovery branch is still **not ready to merge or promote** until browser UAT and hosted Auth hardening pass.
 
 ## Local verification
 
@@ -23,7 +23,7 @@ From `client`, run `npm ci`, `npm test`, then `npm run build`.
 3. New Auth users begin with a locked profile (`role_id = NULL`). Only server-side Admin provisioning can activate a staff role, so public sign-up cannot grant application access. Public sign-ups should still be disabled in hosted Auth settings; local `config.toml` does not update that hosted setting.
 4. Sarah Namusoke (ADMIN) and Cyril Okello (SOC_LEAD) were created through Auth Admin and verified by real password login. Never insert password hashes or change PostgreSQL roles for staff authentication.
 5. `supabase/functions/admin-create-user/index.ts` is deployed to the **new** project. Gateway `verify_jwt` is false because the function verifies the bearer token via Auth, then checks the caller's current database role itself. The function also rejects all known previous project references. No unauthenticated or non-admin call may provision accounts. The service/secret key stays inside the function.
-6. Add the values below to Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Leave shared preview defaults, other branches and production unchanged.
+6. The values below are configured in Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Shared preview defaults, other branches and production remain unchanged.
 
 ```env
 VITE_SUPABASE_URL=https://cudagansojpjtligqewe.supabase.co
@@ -31,7 +31,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<new project's sb_publishable key>
 VITE_SUPABASE_PROJECT_REF=cudagansojpjtligqewe
 ```
 
-7. Trigger a new preview and complete the remaining browser/Vercel checks in `docs/RECOVERY_STATUS.md`. Only merge after they pass.
+7. The branch deployment is READY. Complete the remaining browser checks and hosted Auth blockers in `docs/RECOVERY_STATUS.md`. Only merge after they pass.
 
 ## First administrator and staff provisioning
 
@@ -70,5 +70,7 @@ Incident creation/update audit records and status/assignment/severity history ar
 - Added responsive hamburger navigation, URL-backed incident quick search, and management assignment controls.
 - Added tier-aware status transitions and server-owned resolution timestamps.
 - Fixed optional empty asset IP values, false-success mutations, hidden dashboard errors, and charts incorrectly calculated from only eight recent rows. Dashboard charts cover the last seven days; large-list browser pagination remains a UAT item.
+- Added relational incident assets, incident-to-knowledge-base capture, comment auditing, SLA deadline notifications, report filters/CSV export/monthly trends/analyst performance, audit filters, and user incident counts.
+- Standardized displayed names to first name plus surname initial and constrained feature UI accents to the existing red/black/neutral theme.
 
 The legacy `server` directory is historical and is not used by this Vite/Supabase deployment.
