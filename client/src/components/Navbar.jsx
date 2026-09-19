@@ -34,11 +34,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  if (!currentUser) return null;
-
   const visibleLinks = useMemo(
-    () => NAV_ITEMS.filter(item => canAccessNavItem(currentUser.role, item)),
-    [currentUser.role]
+    () => currentUser ? NAV_ITEMS.filter(item => canAccessNavItem(currentUser.role, item)) : [],
+    [currentUser]
   );
 
   const matches = useMemo(() => {
@@ -97,6 +95,8 @@ export default function Navbar() {
     event.preventDefault();
     if (matches[0]) go(matches[0].to);
   };
+
+  if (!currentUser) return null;
 
   return (
     <>
