@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
@@ -33,7 +34,7 @@ export default function IncidentDetailPage() {
     ? new Date(d).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     : 'N/A';
 
-  const getUserName = uid => users.find(u => u.id === uid)?.name || 'Unknown';
+  const getUserName = uid => formatPersonName(users.find(u => u.id === uid)?.name || 'Unknown');
 
   useEffect(() => {
     const load = async () => {
@@ -214,7 +215,7 @@ export default function IncidentDetailPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-sm font-medium text-gray-200">{c.author?.name || 'Unknown'}</span>
+                          <span className="text-sm font-medium text-gray-200">{formatPersonName(c.author?.name || 'Unknown')}</span>
                           <span className="text-xs text-gray-600">{fmt(c.created_at)}</span>
                         </div>
                         <p className="text-sm text-gray-400 mt-1 leading-relaxed">{c.body}</p>
@@ -253,7 +254,7 @@ export default function IncidentDetailPage() {
                           {log.action?.replace(/_/g, ' ')}
                         </span>
                         <p className="text-xs text-gray-400 mt-0.5">{log.details}</p>
-                        <p className="text-xs text-gray-600">by {log.actor?.name || 'System'}</p>
+                        <p className="text-xs text-gray-600">by {formatPersonName(log.actor?.name || 'System')}</p>
                       </div>
                     </div>
                   ))}
