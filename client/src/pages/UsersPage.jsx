@@ -4,6 +4,8 @@ import { ROLE_LABELS } from '../lib/rbac.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const INITIAL_FORM = { name:'', email:'', password:'', role_id:'' };
+const STAFF_EMAIL_PATTERN = /^[A-Z0-9._%+-]+@ccorp\\.local$/i;
+const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
@@ -55,14 +57,26 @@ export default function UsersPage() {
 
   const handleCreate = async event => {
     event.preventDefault();
-    setSaving(true);
     setError('');
     setNotice('');
+
+    const email = form.email.trim().toLowerCase();
+    if (!STAFF_EMAIL_PATTERN.test(email)) {
+      setError('Use a valid CCorp staff email ending in @ccorp.local.');
+      return;
+    }
+
+    if (!STRONG_PASSWORD_PATTERN.test(form.password)) {
+      setError('Temporary password must be at least 12 characters and include upper, lower, number, and symbol.');
+      return;
+    }
+
+    setSaving(true);
 
     const { data, error: functionError } = await supabase.functions.invoke('admin-create-user', {
       body: {
         name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
+        email,
         password: form.password,
         role_id: form.role_id,
       },
@@ -153,7 +167,7 @@ export default function UsersPage() {
                 onChange={handle}
                 required
                 minLength={12}
-                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}"
+                pattern=".{12,}"
                 title="Use at least 12 characters with upper, lower, number, and symbol"
                 autoComplete="new-password"
                 placeholder="Minimum 12 characters"
