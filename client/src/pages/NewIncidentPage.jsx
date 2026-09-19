@@ -31,13 +31,7 @@ export default function NewIncidentPage() {
       assigned_to:    null,
     }).select().single();
     if (error) { setError(error.message); setSubmitting(false); return; }
-    // Log to audit_log
-    await supabase.from('audit_log').insert({
-      incident_id: data.id,
-      user_id:     currentUser.id,
-      action:      'INCIDENT_CREATED',
-      details:     `Incident created with severity ${form.severity}`,
-    });
+    // Audit and SLA records are generated server-side by database triggers.
     navigate(`/incidents/${data.id}`);
   };
 
