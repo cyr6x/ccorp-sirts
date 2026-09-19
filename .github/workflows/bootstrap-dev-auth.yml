@@ -7,6 +7,7 @@ on:
       - dev/chatgpt-isolated-sirts
     paths:
       - client/scripts/bootstrap-auth.mjs
+      - .github/workflows/bootstrap-dev-auth.yml
 
 jobs:
   bootstrap:
