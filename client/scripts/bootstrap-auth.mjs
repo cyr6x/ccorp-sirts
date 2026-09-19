@@ -1,18 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = 'https://pvtissqcpskpxlduxuta.supabase.co';
-const key = 'sb_publishable_t1n4jLjtt_eSWDtQj7vCaw_Q2wY6DzY';
+const url = 'https://oslthmbnukpkywapdkje.supabase.co';
+const key = 'sb_publishable_YRpCIiZ20GW5e5PMcT6SZg_D6GZNoJU';
 const password = 'SIRTS-Test!2026';
 
 const staff = [
-  { email:'sarah@ccorp.local', name:'Sarah Namusoke' },
-  { email:'cyril@ccorp.local', name:'Cyril Ssentongo' },
-  { email:'allan@ccorp.local', name:'Allan Kato' },
-  { email:'tony@ccorp.local', name:'Tony Okello' },
-  { email:'david@ccorp.local', name:'David Mugisha' },
-  { email:'ellen@ccorp.local', name:'Ellen Atim' },
-  { email:'lisa@ccorp.local', name:'Lisa Achieng' },
-  { email:'mike@ccorp.local', name:'Michael Ochieng' },
+  { email:'sarah@ccorp.example.com', name:'Sarah Namusoke' },
 ];
 
 const client = createClient(url, key, {
@@ -39,6 +32,6 @@ for (const person of staff) {
 
 console.log(JSON.stringify(results, null, 2));
 
-if (results.some(result => result.signup_error && !/already registered/i.test(result.signup_error))) {
+if (results.some(result => result.signup_error)) {
   process.exitCode = 1;
 }
