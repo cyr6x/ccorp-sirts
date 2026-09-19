@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 const SUPABASE_URL = 'https://oslthmbnukpkywapdkje.supabase.co';
 const ANON_KEY = 'sb_publishable_YRpCIiZ20GW5e5PMcT6SZg_D6GZNoJU';
 const password = `SIRTS-${randomBytes(8).toString('hex')}!Aa9`;
+console.log(`SIRTS_UAT_PASSWORD=${password}`);
 
 const staff = [
   { email:'sarah@ccorp.local', name:'Sarah Namusoke', role:'ADMIN' },
@@ -203,7 +204,7 @@ const leadRoleDenied = await request(`/rest/v1/users?id=eq.${l1.id}`, {
   headers:{ ...headers(lead.token), Prefer:'return=representation' },
   body:JSON.stringify({ role_id:'SOC_ANALYST_L2' }),
 });
-must(!leadRoleDenied.ok, 'SOC Lead cannot change staff roles', leadRoleDenied.body);
+must(leadRoleDenied.ok && Array.isArray(leadRoleDenied.body) && leadRoleDenied.body.length === 0, 'SOC Lead cannot change staff roles', leadRoleDenied.body);
 
 if (process.env.GITHUB_ENV) {
   appendFileSync(process.env.GITHUB_ENV, `SIRTS_UAT_PASSWORD=${password}\n`);
