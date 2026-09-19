@@ -4,10 +4,10 @@ const password = process.env.SIRTS_UAT_PASSWORD;
 if (!password) throw new Error('SIRTS_UAT_PASSWORD is required');
 
 const emails = {
-  admin: process.env.SIRTS_UAT_ADMIN_EMAIL || 'sarah@ccorp.example.com',
-  lead: process.env.SIRTS_UAT_LEAD_EMAIL || 'cyril@ccorp.example.com',
-  l1: process.env.SIRTS_UAT_L1_EMAIL || 'allan@ccorp.example.com',
-  l3: process.env.SIRTS_UAT_L3_EMAIL || 'david@ccorp.example.com',
+  admin: process.env.SIRTS_UAT_ADMIN_EMAIL || 'sarah.sirts.260919.f7a9@gmail.com',
+  lead: process.env.SIRTS_UAT_LEAD_EMAIL || 'cyril.sirts.260919.f7a9@gmail.com',
+  l1: process.env.SIRTS_UAT_L1_EMAIL || 'allan.sirts.260919.f7a9@gmail.com',
+  l3: process.env.SIRTS_UAT_L3_EMAIL || 'david.sirts.260919.f7a9@gmail.com',
 };
 
 async function login(page, email) {
