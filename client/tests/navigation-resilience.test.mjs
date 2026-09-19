@@ -48,9 +48,9 @@ test('dashboard reports data failures instead of silently blanking', async () =>
 });
 
 
-test('development branch cannot silently fall back to production Supabase', async () => {
+test('development branch is pinned to the fresh isolated Supabase project', async () => {
   const client = await read('src/lib/supabaseClient.js');
+  assert.match(client, /pvtissqcpskpxlduxuta\.supabase\.co/);
   assert.doesNotMatch(client, /tvjyllnfuptdcbirjvev\.supabase\.co/);
   assert.match(client, /supabaseConfigured/);
-  assert.match(client, /example\.invalid/);
 });
