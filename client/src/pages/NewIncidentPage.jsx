@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
@@ -10,10 +10,25 @@ export default function NewIncidentPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ title:'', description:'', category:'PHISHING', severity:'MEDIUM', source_ip:'', affected_asset:'' });
+  const [assets, setAssets] = useState([]);
+  const [assetSearch, setAssetSearch] = useState('');
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handle = e => setForm(f => ({...f, [e.target.name]: e.target.value}));
+
+  useEffect(() => {
+    supabase.from('assets').select('id, name, type, ip_address').eq('status', 'ACTIVE').order('name')
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else setAssets(data || []);
+      });
+  }, []);
+
+  const toggleAsset = assetId => setSelectedAssetIds(current =>
+    current.includes(assetId) ? current.filter(id => id !== assetId) : [...current, assetId]
+  );
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -31,6 +46,18 @@ export default function NewIncidentPage() {
       assigned_to:    null,
     }).select().single();
     if (error) { setError(error.message); setSubmitting(false); return; }
+    if (selectedAssetIds.length > 0) {
+      const result = await supabase.from('incident_assets').insert(selectedAssetIds.map(assetId => ({
+        incident_id: data.id,
+        asset_id: assetId,
+        added_by: currentUser.id,
+      })));
+      if (result.error) {
+        setError(`Incident created, but its asset links failed: ${result.error.message}`);
+        setSubmitting(false);
+        return;
+      }
+    }
     navigate(`/incidents/${data.id}`);
   };
 
@@ -42,7 +69,7 @@ export default function NewIncidentPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             Back
           </button>
-          <h1 className="text-2xl font-bold text-white">New <span className="text-blue-400">Incident</span></h1>
+          <h1 className="text-2xl font-bold text-white">New <span className="text-red-400">Incident</span></h1>
           <p className="text-gray-500 text-sm mt-1">Log a new security incident for investigation</p>
         </div>
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
@@ -55,7 +82,7 @@ export default function NewIncidentPage() {
             <label className="block text-sm font-medium text-gray-300 mb-1">Description <span className="text-red-400">*</span></label>
             <textarea name="description" value={form.description} onChange={handle} required rows={5} placeholder="Detailed description of the incident..." className="input w-full resize-none" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
               <select name="category" value={form.category} onChange={handle} className="select w-full">
@@ -75,9 +102,24 @@ export default function NewIncidentPage() {
               <input name="source_ip" value={form.source_ip} onChange={handle} placeholder="e.g. 192.168.1.1" className="input w-full font-mono" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Affected Asset</label>
-              <input name="affected_asset" value={form.affected_asset} onChange={handle} placeholder="e.g. WEB-PROD-01" className="input w-full font-mono" />
+              <label className="block text-sm font-medium text-gray-300 mb-1">Unregistered Asset</label>
+              <input name="affected_asset" value={form.affected_asset} onChange={handle} placeholder="Only if it is not in inventory" className="input w-full font-mono" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Affected Assets</label>
+            <input value={assetSearch} onChange={event => setAssetSearch(event.target.value)} placeholder="Search active asset inventory" className="input w-full mb-2" />
+            <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-800 bg-gray-950/50 divide-y divide-gray-800">
+              {assets.filter(asset => `${asset.name} ${asset.type || ''} ${asset.ip_address || ''}`.toLowerCase().includes(assetSearch.toLowerCase())).map(asset => (
+                <label key={asset.id} className="flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-white/[0.03] cursor-pointer">
+                  <input type="checkbox" checked={selectedAssetIds.includes(asset.id)} onChange={() => toggleAsset(asset.id)} className="accent-red-600" />
+                  <span className="flex-1">{asset.name}</span>
+                  <span className="text-xs text-gray-600 font-mono">{asset.ip_address || asset.type || ''}</span>
+                </label>
+              ))}
+              {assets.length === 0 && <p className="px-3 py-4 text-sm text-gray-600">No active assets are registered yet.</p>}
+            </div>
+            <p className="mt-1 text-xs text-gray-600">{selectedAssetIds.length} selected</p>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={submitting} className="btn-primary flex-1 flex items-center justify-center gap-2">

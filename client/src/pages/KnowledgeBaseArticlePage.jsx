@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { abbreviatedName } from '../lib/formatters.js';
 
 export default function KnowledgeBaseArticlePage() {
   const { id } = useParams();
@@ -47,11 +48,11 @@ export default function KnowledgeBaseArticlePage() {
   };
 
   const CATEGORIES = ['PHISHING','MALWARE','UNAUTHORISED_ACCESS','DOS','OTHER'];
-  const CAT_COLORS = { PHISHING:'bg-orange-500/20 text-orange-400', MALWARE:'bg-red-500/20 text-red-400', UNAUTHORISED_ACCESS:'bg-purple-500/20 text-purple-400', DOS:'bg-yellow-500/20 text-yellow-400', OTHER:'bg-gray-500/20 text-gray-400' };
+  const CAT_COLORS = { PHISHING:'bg-red-500/15 text-red-300', MALWARE:'bg-red-500/20 text-red-400', UNAUTHORISED_ACCESS:'bg-red-950 text-red-300', DOS:'bg-gray-700 text-gray-200', OTHER:'bg-gray-800 text-gray-400' };
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '';
 
-  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
-  if (error)   return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center"><p className="text-gray-400">{error}</p><Link to="/knowledge-base" className="text-blue-400 text-sm mt-2 inline-block">Back to Knowledge Base</Link></div></div>;
+  if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (error)   return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center"><p className="text-gray-400">{error}</p><Link to="/knowledge-base" className="text-red-400 text-sm mt-2 inline-block">Back to Knowledge Base</Link></div></div>;
 
   return (
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
@@ -86,7 +87,8 @@ export default function KnowledgeBaseArticlePage() {
                   <span className={`text-xs px-2 py-0.5 rounded font-medium mb-3 inline-block ${CAT_COLORS[article.category]||'bg-gray-500/20 text-gray-400'}`}>{article.category?.replace(/_/g,' ')}</span>
                   <h1 className="text-2xl font-bold text-white mt-1">{article.title}</h1>
                   <p className="text-gray-400 text-sm mt-2">{article.summary}</p>
-                  <p className="text-xs text-gray-600 mt-2">by {article.author?.name || 'Unknown'} &bull; {fmt(article.created_at)}</p>
+                  <p className="text-xs text-gray-600 mt-2">by {abbreviatedName(article.author?.name)} &bull; {fmt(article.created_at)}</p>
+                  {article.source_incident_id && <Link to={`/incidents/${article.source_incident_id}`} className="inline-block mt-3 text-xs text-red-400 hover:text-red-300">View source incident &rarr;</Link>}
                 </div>
                 {canEdit && (
                   <div className="flex gap-2 shrink-0">

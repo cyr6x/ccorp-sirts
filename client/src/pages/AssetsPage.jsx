@@ -7,7 +7,7 @@ const ASSET_STATUS  = ['ACTIVE','INACTIVE','MAINTENANCE','DECOMMISSIONED'];
 const RISK_LEVELS   = ['LOW','MEDIUM','HIGH','CRITICAL'];
 
 const RISK_COLORS   = { LOW:'badge-low', MEDIUM:'badge-medium', HIGH:'badge-high', CRITICAL:'badge-critical' };
-const STATUS_COLORS = { ACTIVE:'text-green-400', INACTIVE:'text-gray-500', MAINTENANCE:'text-yellow-400', DECOMMISSIONED:'text-red-400' };
+const STATUS_COLORS = { ACTIVE:'text-gray-200', INACTIVE:'text-gray-500', MAINTENANCE:'text-gray-300', DECOMMISSIONED:'text-red-400' };
 
 export default function AssetsPage() {
   const { currentUser } = useAuth();
@@ -72,7 +72,7 @@ export default function AssetsPage() {
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Asset <span className="text-blue-400">Inventory</span></h1>
+            <h1 className="text-2xl font-bold text-white">Asset <span className="text-red-400">Inventory</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">{assets.length} registered assets</p>
           </div>
           {canManage && (
@@ -84,7 +84,7 @@ export default function AssetsPage() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[{l:'Total Assets',l2:stats.total,c:'text-white'},{l:'Active',l2:stats.active,c:'text-green-400'},{l:'Critical Risk',l2:stats.critical,c:'text-red-400'},{l:'High Risk',l2:stats.high,c:'text-orange-400'}].map(s => (
+          {[{l:'Total Assets',l2:stats.total,c:'text-white'},{l:'Active',l2:stats.active,c:'text-gray-200'},{l:'Critical Risk',l2:stats.critical,c:'text-red-400'},{l:'High Risk',l2:stats.high,c:'text-red-300'}].map(s => (
             <div key={s.l} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
               <p className="text-xs text-gray-500 uppercase tracking-wider">{s.l}</p>
               <p className={`text-2xl font-bold mt-1 ${s.c}`}>{s.l2}</p>
@@ -137,7 +137,7 @@ export default function AssetsPage() {
               {canManage && <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>}
             </tr></thead>
             <tbody className="divide-y divide-gray-800">
-              {loading && <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
+              {loading && <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
               {!loading && filtered.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-600 text-sm">No assets found.</td></tr>}
               {!loading && filtered.map(a => (
                 <tr key={a.id} className="hover:bg-gray-800/30 transition-colors">
@@ -148,7 +148,7 @@ export default function AssetsPage() {
                   <td className="px-5 py-4"><span className={RISK_COLORS[a.risk_level]}>{a.risk_level}</span></td>
                   <td className="px-5 py-4"><span className={`text-xs font-medium ${STATUS_COLORS[a.status]||'text-gray-400'}`}>{a.status}</span></td>
                   {canManage && <td className="px-5 py-4">
-                    <select value={a.status} onChange={e=>handleStatusChange(a.id,e.target.value)} className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500">
+                    <select value={a.status} onChange={e=>handleStatusChange(a.id,e.target.value)} className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-red-500">
                       {ASSET_STATUS.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>}

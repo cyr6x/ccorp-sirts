@@ -3,22 +3,21 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import { abbreviatedName } from '../lib/formatters.js';
 
-const CAT_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+const CAT_COLORS = ['#ef1b24','#c8141c','#991b1b','#73737b','#b9b9be'];
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
 
-function StatCard({ label, value, sub, icon, accent }) {
-  const colors = { red:'border-red-500/30 bg-red-500/5', blue:'border-blue-500/30 bg-blue-500/5', green:'border-green-500/30 bg-green-500/5', yellow:'border-yellow-500/30 bg-yellow-500/5' };
+function StatCard({ label, value, sub, emphasis = false }) {
   return (
-    <div className={`rounded-xl border p-5 ${colors[accent]||colors.blue} transition-all hover:scale-[1.02]`}>
+    <div className={`rounded-xl border p-5 ${emphasis ? 'border-red-500/30 bg-red-500/5' : 'border-gray-800 bg-gray-900'}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
           <p className="text-3xl font-bold text-white mt-1">{value ?? '\u2014'}</p>
           {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
         </div>
-        <div className="text-2xl opacity-60">{icon}</div>
       </div>
     </div>
   );
@@ -90,8 +89,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Security Operations <span className="text-blue-400">Dashboard</span></h1>
-          <p className="text-gray-500 text-sm mt-1">Welcome back, {currentUser?.name} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+          <h1 className="text-2xl font-bold text-white">Security Operations <span className="text-red-400">Dashboard</span></h1>
+          <p className="text-gray-500 text-sm mt-1">Welcome back, {abbreviatedName(currentUser?.name, 'analyst')} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
 
         {error && <p role="alert" className="mb-6 p-4 border border-red-700 rounded-lg text-red-300">Dashboard unavailable: {error}</p>}
@@ -107,14 +106,14 @@ export default function DashboardPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+          <div className="flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /></div>
         ) : error ? null : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <StatCard label="Open Incidents"  value={stats.open}     sub="Require attention"       icon="\uD83D\uDEA8" accent="red" />
-              <StatCard label="Critical"        value={stats.critical} sub="Highest severity"        icon="\u26A0\uFE0F" accent="red" />
-              <StatCard label="This Week"       value={stats.thisWeek} sub="New incidents (7 days)"  icon="\uD83D\uDCC5" accent="blue" />
-              <StatCard label="Avg Resolution"  value={stats.mttr!=null?`${stats.mttr}h`:'N/A'} sub="Mean time to resolve" icon="\u23F1\uFE0F" accent="green" />
+              <StatCard label="Open Incidents"  value={stats.open}     sub="Require attention" emphasis />
+              <StatCard label="Critical"        value={stats.critical} sub="Highest severity" emphasis />
+              <StatCard label="This Week"       value={stats.thisWeek} sub="New incidents (7 days)" />
+              <StatCard label="Avg Resolution"  value={stats.mttr!=null?`${stats.mttr}h`:'N/A'} sub="Mean time to resolve" />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
@@ -124,8 +123,8 @@ export default function DashboardPage() {
                   <BarChart data={dayData} margin={{top:0,right:0,bottom:0,left:-20}}>
                     <XAxis dataKey="day" tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fill:'#6b7280',fontSize:11}} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} cursor={{fill:'rgba(59,130,246,0.05)'}} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[4,4,0,0]} />
+                    <Tooltip contentStyle={{background:'#111827',border:'1px solid #1f2937',borderRadius:'8px',color:'#f9fafb'}} cursor={{fill:'rgba(239,27,36,0.06)'}} />
+                    <Bar dataKey="count" fill="#ef1b24" radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -148,7 +147,7 @@ export default function DashboardPage() {
             <div className="bg-gray-900 border border-gray-800 rounded-xl">
               <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-300">Recent Incidents</h3>
-                <Link to="/incidents" className="text-xs text-blue-400 hover:text-blue-300 font-medium">View all &rarr;</Link>
+                <Link to="/incidents" className="text-xs text-red-400 hover:text-red-300 font-medium">View all &rarr;</Link>
               </div>
               <div className="divide-y divide-gray-800">
                 {recent.length===0 && <p className="text-gray-600 text-sm text-center py-8">No incidents yet.</p>}
@@ -159,7 +158,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-500 mt-0.5">{inc.category?.replace(/_/g,' ')} &bull; {inc.affected_asset||'N/A'}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-500 hidden lg:block">{inc.assigned_to_user?.name||<span className="italic">Unassigned</span>}</span>
+                      <span className="text-xs text-gray-500 hidden lg:block">{inc.assigned_to_user?.name ? abbreviatedName(inc.assigned_to_user.name) : <span className="italic">Unassigned</span>}</span>
                       <span className={SEV_MAP[inc.severity]}>{inc.severity}</span>
                       <span className={STATUS_MAP[inc.status]||'status-open'}>{inc.status}</span>
                     </div>

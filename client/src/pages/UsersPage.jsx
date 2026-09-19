@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { abbreviatedName, nameInitial } from '../lib/formatters.js';
 
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
   const [users,     setUsers]     = useState([]);
   const [roles,     setRoles]     = useState([]);
+  const [incidentCounts, setIncidentCounts] = useState({});
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
   const [search,    setSearch]    = useState('');
@@ -16,13 +18,23 @@ export default function UsersPage() {
 
   const load = async () => {
     setLoading(true);
-    const [uRes, rRes] = await Promise.all([
+    const [uRes, rRes, iRes] = await Promise.all([
       supabase.from('users').select('*, role:roles(id,name)').order('created_at',{ascending:false}),
       supabase.from('roles').select('*'),
+      supabase.from('incidents').select('id, assigned_to, created_by'),
     ]);
-    if (uRes.error) setError(uRes.error.message);
-    else setUsers(uRes.data||[]);
-    setRoles(rRes.data||[]);
+    const loadError = [uRes, rRes, iRes].find(result => result.error)?.error;
+    if (loadError) setError(loadError.message);
+    else {
+      setError('');
+      setUsers(uRes.data || []);
+      setRoles(rRes.data || []);
+      const counts = {};
+      (iRes.data || []).forEach(incident => {
+        new Set([incident.assigned_to, incident.created_by].filter(Boolean)).forEach(userId => { counts[userId] = (counts[userId] || 0) + 1; });
+      });
+      setIncidentCounts(counts);
+    }
     setLoading(false);
   };
 
@@ -64,14 +76,14 @@ export default function UsersPage() {
 
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'N/A';
   const filtered = users.filter(u => !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
-  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-orange-400', SOC_ANALYST_L1:'text-gray-300', SOC_ANALYST_L2:'text-gray-300', SOC_ANALYST_L3:'text-gray-300' };
+  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-red-300', SOC_ANALYST_L1:'text-gray-300', SOC_ANALYST_L2:'text-gray-300', SOC_ANALYST_L3:'text-gray-300' };
 
   return (
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">User <span className="text-blue-400">Management</span></h1>
+            <h1 className="text-2xl font-bold text-white">User <span className="text-red-400">Management</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">{users.length} registered users</p>
           </div>
           <button onClick={()=>setShowForm(v=>!v)} className="btn-primary flex items-center gap-2">
@@ -86,7 +98,7 @@ export default function UsersPage() {
           <form onSubmit={handleCreate} className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1">Full Name</label>
-              <input name="name" value={form.name} onChange={handle} required placeholder="Jane Smith" className="input w-full" />
+              <input name="name" value={form.name} onChange={handle} required placeholder="First and last name" className="input w-full" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1">Email</label>
@@ -126,23 +138,24 @@ export default function UsersPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Incidents</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
-              {!loading && filtered.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm">No users found.</td></tr>}
+              {loading && <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
+              {!loading && filtered.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-600 text-sm">No users found.</td></tr>}
               {!loading && filtered.map(u => (
                 <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-600/30 flex items-center justify-center">
-                        <span className="text-xs font-bold text-blue-400">{u.name?.charAt(0)?.toUpperCase()}</span>
+                      <div className="w-8 h-8 rounded-full bg-red-600/10 border border-red-600/30 flex items-center justify-center">
+                        <span className="text-xs font-bold text-red-400">{nameInitial(u.name)}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-100">{u.name}</p>
-                        {u.id === currentUser.id && <span className="text-xs text-blue-400">(you)</span>}
+                        <p className="font-medium text-gray-100">{abbreviatedName(u.name)}</p>
+                        {u.id === currentUser.id && <span className="text-xs text-red-400">(you)</span>}
                       </div>
                     </div>
                   </td>
@@ -152,14 +165,15 @@ export default function UsersPage() {
                       value={u.role_id||''}
                       onChange={e => handleRoleChange(u.id, e.target.value)}
                       disabled={u.id === currentUser.id}
-                      className={`text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500 ${ROLE_COLORS[u.role?.name]||'text-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`text-xs px-2 py-1 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-red-500 ${ROLE_COLORS[u.role?.name]||'text-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </td>
+                  <td className="px-5 py-4 text-gray-300 text-xs font-mono">{incidentCounts[u.id] || 0}</td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">{fmt(u.created_at)}</td>
                   <td className="px-5 py-4">
-                    <span className="text-xs text-green-400">&bull; Active</span>
+                    <span className="text-xs text-gray-300">&bull; Active</span>
                   </td>
                 </tr>
               ))}

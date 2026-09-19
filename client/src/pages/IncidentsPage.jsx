@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { abbreviatedName } from '../lib/formatters.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
@@ -17,7 +18,7 @@ function SlaBadge({ severity, createdAt, status }) {
   if (pct < 75) return null;
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-      pct >= 100 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+      pct >= 100 ? 'bg-red-500/20 text-red-400' : 'bg-white/5 text-gray-300'
     }`}>
       {pct >= 100 ? 'SLA BREACHED' : 'SLA AT RISK'}
     </span>
@@ -94,7 +95,7 @@ export default function IncidentsPage() {
       <div className="max-w-screen-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Incident <span className="text-blue-400">Registry</span></h1>
+            <h1 className="text-2xl font-bold text-white">Incident <span className="text-red-400">Registry</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">{filtered.length} of {incidents.length} incidents</p>
           </div>
           <Link to="/incidents/new" className="btn-primary flex items-center gap-2">
@@ -146,7 +147,7 @@ export default function IncidentsPage() {
               {loading && (
                 <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-600 text-sm">
                   <span className="inline-flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                     Loading incidents...
                   </span>
                 </td></tr>
@@ -173,7 +174,7 @@ export default function IncidentsPage() {
                   <td className="px-5 py-4"><span className={SEV_MAP[inc.severity]}>{inc.severity}</span></td>
                   <td className="px-5 py-4"><span className={STATUS_MAP[inc.status] || 'status-open'}>{inc.status}</span></td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-400 text-xs">
-                    {inc.assigned_to_user?.name || <span className="text-gray-600 italic">Unassigned</span>}
+                    {inc.assigned_to_user?.name ? abbreviatedName(inc.assigned_to_user.name) : <span className="text-gray-600 italic">Unassigned</span>}
                   </td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">{fmt(inc.created_at)}</td>
                 </tr>

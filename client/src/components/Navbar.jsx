@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { abbreviatedName } from '../lib/formatters.js';
 
 const navLinks = [
   { to: '/dashboard',       label: 'Dashboard',      roles: null,                 icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -15,7 +16,7 @@ const navLinks = [
 
 const ROLE_COLORS = {
   ADMIN: 'text-red-300',
-  SOC_LEAD: 'text-orange-300',
+  SOC_LEAD: 'text-red-300',
   SOC_ANALYST_L1: 'text-gray-300',
   SOC_ANALYST_L2: 'text-gray-300',
   SOC_ANALYST_L3: 'text-gray-300',
@@ -63,7 +64,7 @@ export default function Navbar() {
           <input className="input w-full" aria-label="Quick search incidents" placeholder="Search incidents, assets or IPs…" value={query} onChange={event => setQuery(event.target.value)} />
           <button className="btn-primary" type="submit">Search</button>
         </form>
-        <div className="hidden lg:block text-right"><p className="text-sm text-gray-200">{currentUser.name}</p>
+        <div className="hidden lg:block text-right"><p className="text-sm text-gray-200">{abbreviatedName(currentUser.name)}</p>
           <p className="text-xs text-gray-500">{ROLE_LABELS[currentUser.role]}</p></div>
         <button onClick={handleLogout} className="ml-auto sm:ml-0 text-sm text-gray-300 hover:text-white">Sign out</button>
       </div>

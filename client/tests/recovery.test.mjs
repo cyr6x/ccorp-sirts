@@ -61,7 +61,7 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
     });
     await t.test('all tables deny anonymous reads', async () => {
       await db.exec('set role anon');
-      for (const name of ['users','roles','incidents','comments','incident_updates','notifications','audit_log','kb_articles','assets']) {
+      for (const name of ['users','roles','incidents','comments','incident_updates','notifications','audit_log','kb_articles','assets','incident_assets']) {
         await assert.rejects(db.query(`select * from public.${name}`), /permission denied/);
       }
       await db.exec('reset role');
@@ -118,6 +118,32 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
         assert((await as(i,'select * from public.kb_articles')).rows.length>0);
         assert((await as(i,'select * from public.assets')).rows.length>0);
       }
+    });
+    await t.test('live asset links, KB traceability, comment auditing, and SLA deadlines stay authorized', async () => {
+      const assetId = (await as(0, 'select id from public.assets order by created_at limit 1')).rows[0].id;
+      await as(2, 'insert into public.incident_assets(incident_id,asset_id,added_by) values($1,$2,$3)', [incidentIds[2], assetId, ids[2]]);
+      assert.equal((await as(2, 'select asset_id from public.incident_assets where incident_id=$1', [incidentIds[2]])).rows[0].asset_id, assetId);
+      await assert.rejects(
+        as(2, 'insert into public.incident_assets(incident_id,asset_id,added_by) values($1,$2,$3)', [incidentIds[0], assetId, ids[2]]),
+        /row-level security/
+      );
+
+      await as(0, "insert into public.kb_articles(title,summary,content,source_incident_id,tags) values('Traceable','Source linked','Operational notes',$1,array['CRITICAL'])", [incidentIds[0]]);
+      const article = (await as(0, 'select source_incident_id,tags from public.kb_articles where source_incident_id=$1', [incidentIds[0]])).rows[0];
+      assert.equal(article.source_incident_id, incidentIds[0]);
+      assert.deepEqual(article.tags, ['CRITICAL']);
+      await assert.rejects(
+        as(1, "insert into public.kb_articles(title,content,source_incident_id) values('Duplicate','Denied',$1)", [incidentIds[0]]),
+        /unique constraint/
+      );
+
+      const commentAudit = await as(0, "select id from public.audit_log where incident_id=$1 and action='COMMENT_ADDED'", [incidentIds[2]]);
+      assert(commentAudit.rows.length > 0);
+
+      await as(0, "update public.incidents set severity='CRITICAL' where id=$1", [incidentIds[0]]);
+      const deadline = (await as(0, "select type,deadline_at from public.notifications where incident_id=$1 and type='SLA_DEADLINE'", [incidentIds[0]])).rows[0];
+      assert.equal(deadline.type, 'SLA_DEADLINE');
+      assert(deadline.deadline_at);
     });
   } finally { await db.close(); }
 });

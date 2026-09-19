@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import { abbreviatedName, nameInitial } from '../lib/formatters.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
@@ -17,12 +18,18 @@ export default function IncidentDetailPage() {
   const [comments,    setComments]    = useState([]);
   const [auditLogs,   setAuditLogs]   = useState([]);
   const [users,       setUsers]       = useState([]);
+  const [assets,      setAssets]      = useState([]);
+  const [linkedAssets,setLinkedAssets]= useState([]);
+  const [selectedAssetId, setSelectedAssetId] = useState('');
+  const [kbArticleId, setKbArticleId] = useState(null);
   const [commentBody, setCommentBody] = useState('');
   const [status,      setStatus]      = useState('');
   const [tab,         setTab]         = useState('comments');
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [posting,     setPosting]     = useState(false);
+  const [linking,     setLinking]     = useState(false);
+  const [kbSaving,    setKbSaving]    = useState(false);
   const [error,       setError]       = useState('');
   const channelRef = useRef(null);
 
@@ -34,25 +41,41 @@ export default function IncidentDetailPage() {
     ? new Date(d).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     : 'N/A';
 
-  const getUserName = uid => uid ? users.find(u => u.id === uid)?.name || 'Unknown' : 'Unassigned';
+  const getUserName = uid => uid ? abbreviatedName(users.find(u => u.id === uid)?.name) : 'Unassigned';
+
+  const refreshLinkedAssets = async () => {
+    const result = await supabase
+      .from('incident_assets')
+      .select('asset_id, asset:assets(id, name, type, ip_address)')
+      .eq('incident_id', id)
+      .order('created_at', { ascending: true });
+    if (result.error) setError(result.error.message);
+    else setLinkedAssets(result.data || []);
+  };
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [incRes, cmtRes, logRes, usrRes] = await Promise.all([
+      const [incRes, cmtRes, logRes, usrRes, assetRes, linkedAssetRes, kbRes] = await Promise.all([
         supabase.from('incidents').select('*').eq('id', id).single(),
         supabase.from('comments').select('*, author:users(name)').eq('incident_id', id).order('created_at', { ascending: true }),
         canManage ? supabase.from('audit_log').select('*, actor:users(name)').eq('incident_id', id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
         supabase.from('users').select('id, name'),
+        supabase.from('assets').select('id, name, type, ip_address').eq('status', 'ACTIVE').order('name'),
+        supabase.from('incident_assets').select('asset_id, asset:assets(id, name, type, ip_address)').eq('incident_id', id).order('created_at', { ascending: true }),
+        supabase.from('kb_articles').select('id').eq('source_incident_id', id).maybeSingle(),
       ]);
       if (incRes.error) { setError('Incident not found or access denied.'); setLoading(false); return; }
-      const relatedError = [cmtRes, logRes, usrRes].find(result => result.error)?.error;
+      const relatedError = [cmtRes, logRes, usrRes, assetRes, linkedAssetRes, kbRes].find(result => result.error)?.error;
       setError(relatedError?.message || '');
       setIncident(incRes.data);
       setStatus(incRes.data.status);
       setComments(cmtRes.data || []);
       setAuditLogs(logRes.data || []);
       setUsers(usrRes.data || []);
+      setAssets(assetRes.data || []);
+      setLinkedAssets(linkedAssetRes.data || []);
+      setKbArticleId(kbRes.data?.id || null);
       setLoading(false);
     };
     load();
@@ -100,6 +123,53 @@ export default function IncidentDetailPage() {
   };
   const handleStatusSave = () => saveIncident({ status });
 
+  const handleLinkAsset = async () => {
+    if (!selectedAssetId) return;
+    setLinking(true);
+    setError('');
+    const { error } = await supabase.from('incident_assets').insert({
+      incident_id: id,
+      asset_id: selectedAssetId,
+      added_by: currentUser.id,
+    });
+    if (error) setError(error.code === '23505' ? 'That asset is already linked.' : error.message);
+    else {
+      setSelectedAssetId('');
+      await refreshLinkedAssets();
+    }
+    setLinking(false);
+  };
+
+  const handleUnlinkAsset = async assetId => {
+    setLinking(true);
+    setError('');
+    const { error } = await supabase.from('incident_assets').delete().eq('incident_id', id).eq('asset_id', assetId);
+    if (error) setError(error.message);
+    else await refreshLinkedAssets();
+    setLinking(false);
+  };
+
+  const handleKnowledgeArticle = async () => {
+    if (kbArticleId) { navigate(`/knowledge-base/${kbArticleId}`); return; }
+    setKbSaving(true);
+    setError('');
+    const { data, error } = await supabase.from('kb_articles').insert({
+      title: incident.title,
+      summary: incident.description.slice(0, 180),
+      content: `${incident.description}\n\nResolution notes:\n`,
+      category: incident.category,
+      tags: [incident.severity, incident.category].filter(Boolean),
+      source_incident_id: incident.id,
+      author_id: currentUser.id,
+    }).select('id').single();
+    if (error) setError(error.message);
+    else {
+      setKbArticleId(data.id);
+      navigate(`/knowledge-base/${data.id}`);
+    }
+    setKbSaving(false);
+  };
+
   const handleAddComment = async () => {
     if (!commentBody.trim()) return;
     setPosting(true);
@@ -117,7 +187,7 @@ export default function IncidentDetailPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -125,7 +195,7 @@ export default function IncidentDetailPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="text-center">
         <p className="text-gray-400 text-lg">{error}</p>
-        <Link to="/incidents" className="text-blue-400 text-sm mt-2 inline-block hover:underline">Back to incidents</Link>
+        <Link to="/incidents" className="text-red-400 text-sm mt-2 inline-block hover:underline">Back to incidents</Link>
       </div>
     </div>
   );
@@ -133,7 +203,7 @@ export default function IncidentDetailPage() {
   const target   = SLA_TARGETS[incident.severity] || 24;
   const elapsed  = (new Date(incident.resolved_at || Date.now()) - new Date(incident.created_at)) / 3600000;
   const slaPct   = Math.min((elapsed / target) * 100, 100);
-  const slaColor = slaPct >= 100 ? 'bg-red-500' : slaPct >= 75 ? 'bg-yellow-500' : 'bg-green-500';
+  const slaColor = slaPct >= 75 ? 'bg-red-500' : 'bg-gray-500';
   const slaLabel = slaPct >= 100 ? 'SLA Breached' : slaPct >= 75 ? 'SLA At Risk' : 'Within SLA';
 
   return (
@@ -179,7 +249,7 @@ export default function IncidentDetailPage() {
                   <button key={t} onClick={() => setTab(t)}
                     className={`px-5 py-3 text-sm font-medium transition-colors capitalize ${
                       tab === t
-                        ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-500/5'
+                        ? 'text-red-400 border-b-2 border-red-400 bg-red-500/5'
                         : 'text-gray-500 hover:text-gray-300'
                     }`}>
                     {t === 'comments' ? `Comments (${comments.length})` : 'Audit Trail'}
@@ -194,14 +264,14 @@ export default function IncidentDetailPage() {
                   )}
                   {comments.map(c => (
                     <div key={c.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-600/30 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-blue-400">
-                          {(c.author?.name || 'U')[0].toUpperCase()}
+                      <div className="w-8 h-8 rounded-full bg-red-600/10 border border-red-600/30 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-red-400">
+                          {nameInitial(c.author?.name)}
                         </span>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-sm font-medium text-gray-200">{c.author?.name || 'Unknown'}</span>
+                          <span className="text-sm font-medium text-gray-200">{abbreviatedName(c.author?.name)}</span>
                           <span className="text-xs text-gray-600">{fmt(c.created_at)}</span>
                         </div>
                         <p className="text-sm text-gray-400 mt-1 leading-relaxed">{c.body}</p>
@@ -236,11 +306,11 @@ export default function IncidentDetailPage() {
                     <div key={log.id} className="px-5 py-3 flex items-start gap-3">
                       <span className="text-xs font-mono text-gray-600 shrink-0 mt-0.5 w-32">{fmt(log.created_at)}</span>
                       <div>
-                        <span className="text-xs font-semibold text-blue-400 uppercase">
+                        <span className="text-xs font-semibold text-red-400 uppercase">
                           {log.action?.replace(/_/g, ' ')}
                         </span>
                         <p className="text-xs text-gray-400 mt-0.5">{log.details}</p>
-                        <p className="text-xs text-gray-600">by {log.actor?.name || 'System'}</p>
+                        <p className="text-xs text-gray-600">by {log.actor?.name ? abbreviatedName(log.actor.name) : 'System'}</p>
                       </div>
                     </div>
                   ))}
@@ -257,7 +327,7 @@ export default function IncidentDetailPage() {
                 <select id="assignee" className="select w-full" disabled={saving}
                   value={incident.assigned_to || ''} onChange={e => saveIncident({ assigned_to: e.target.value || null })}>
                   <option value="">Unassigned</option>
-                  {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                  {users.map(user => <option key={user.id} value={user.id}>{abbreviatedName(user.name)}</option>)}
                 </select>
               </div>
             )}
@@ -279,11 +349,44 @@ export default function IncidentDetailPage() {
               </div>
             )}
 
+            {canEdit && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Linked Assets</h3>
+                <div className="flex gap-2">
+                  <select className="select min-w-0 flex-1" value={selectedAssetId} onChange={event => setSelectedAssetId(event.target.value)}>
+                    <option value="">Select active asset</option>
+                    {assets.filter(asset => !linkedAssets.some(link => link.asset_id === asset.id)).map(asset => (
+                      <option key={asset.id} value={asset.id}>{asset.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn-primary px-3" onClick={handleLinkAsset} disabled={!selectedAssetId || linking}>Link</button>
+                </div>
+              </div>
+            )}
+
+            {canManage && (
+              <button type="button" onClick={handleKnowledgeArticle} disabled={kbSaving} className="w-full rounded-xl border border-red-500/30 bg-red-500/5 px-5 py-3 text-sm font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50">
+                {kbSaving ? 'Saving…' : kbArticleId ? 'Open Knowledge Article' : 'Save to Knowledge Base'}
+              </button>
+            )}
+
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</h3>
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Affected Assets</p>
+                {linkedAssets.length > 0 ? (
+                  <div className="space-y-2">
+                    {linkedAssets.map(link => (
+                      <div key={link.asset_id} className="flex items-center justify-between gap-2 rounded border border-gray-800 px-2 py-1.5">
+                        <span className="min-w-0 text-sm text-gray-300 truncate">{link.asset?.name || 'Unknown asset'}</span>
+                        {canEdit && <button type="button" onClick={() => handleUnlinkAsset(link.asset_id)} disabled={linking} className="text-xs text-gray-500 hover:text-red-400">Remove</button>}
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="text-sm text-gray-300 font-medium">{incident.affected_asset || 'N/A'}</p>}
+              </div>
               {[
                 { label: 'Category',       value: incident.category?.replace(/_/g, ' ') },
-                { label: 'Affected Asset', value: incident.affected_asset || 'N/A' },
                 { label: 'Source IP',      value: incident.source_ip     || 'N/A' },
                 { label: 'Created By',     value: getUserName(incident.created_by) },
                 { label: 'Assigned To',    value: getUserName(incident.assigned_to) || 'Unassigned' },
