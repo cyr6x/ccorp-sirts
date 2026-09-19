@@ -4,8 +4,8 @@ import { ROLE_LABELS } from '../lib/rbac.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const INITIAL_FORM = { name:'', email:'', password:'', role_id:'' };
-const STAFF_EMAIL_PATTERN = /^[A-Z0-9._%+-]+@ccorp\\.local$/i;
-const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}$/;
+const STAFF_EMAIL_PATTERN = /^[A-Z0-9._%+-]+@ccorp\.local$/i;
+const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
