@@ -158,7 +158,7 @@ export default function Navbar() {
                         className="global-search-result"
                       >
                         <span>{item.label}</span>
-                        <span className="text-[10px] text-zinc-700">{item.to}</span>
+                        <span aria-hidden="true" className="text-[10px] text-zinc-700">{item.to}</span>
                       </button>
                     )) : (
                       <div className="px-3 py-3 text-xs text-zinc-600">No matching workspace.</div>
@@ -218,7 +218,7 @@ export default function Navbar() {
             type="button"
             className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
             onClick={() => setMenuOpen(false)}
-            aria-label="Close navigation menu"
+            aria-label="Dismiss navigation menu"
           />
           <aside className="nav-drawer" aria-label="Primary navigation">
             <div className="flex items-center justify-between px-5 h-16 border-b border-white/[0.07]">
@@ -226,7 +226,7 @@ export default function Navbar() {
                 <span className="sirts-mark" />
                 <span className="text-sm font-semibold tracking-[0.18em] text-white">SIRTS</span>
               </Link>
-              <button type="button" className="icon-button" onClick={() => setMenuOpen(false)} aria-label="Close navigation menu">
+              <button type="button" className="icon-button" onClick={() => setMenuOpen(false)} aria-label="Close menu panel">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path strokeLinecap="round" d="M6 6l12 12M18 6 6 18" />
                 </svg>
@@ -245,7 +245,7 @@ export default function Navbar() {
                     className={`drawer-link ${active ? 'drawer-link-active' : ''}`}
                   >
                     <span>{item.label}</span>
-                    <span className="text-[10px] text-zinc-700">{item.to}</span>
+                    <span aria-hidden="true" className="text-[10px] text-zinc-700">{item.to}</span>
                   </Link>
                 );
               })}
