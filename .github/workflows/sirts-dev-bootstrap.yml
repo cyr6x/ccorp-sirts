@@ -22,8 +22,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-fund
 
+      - name: Dependency audit diagnostic
+        run: npm audit --audit-level=high || true
+
       - name: Bootstrap real Auth users and exercise BaaS
-        run: node scripts/bootstrap-live.mjs
+        run: node scripts/bootstrap-fresh.mjs
 
       - name: Source regression tests
         run: npm test
