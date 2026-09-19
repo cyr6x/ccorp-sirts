@@ -1,238 +1,74 @@
-# CCorp SIRTS
+# CCorp SIRTS — morning recovery
 
-**Security Incident Response & Ticketing System** — my final year project for BSc (Hons) Cybersecurity & Networking.
+Recovery branch: `rebuild/morning-sirts`.
+Reference snapshot: `7a8f7ccae4e21ec32937d56d734424ae2daf7a3f`.
+Original main: `09c4c7f51f308226258d1b716c40758750fb927e`, preserved by `backup/main-pre-morning-rebuild`.
 
-A full-stack SOC ticketing tool: report, triage, and resolve incidents with role-based access (Admin / SOC Lead / Analyst / Viewer), a dashboard with incident stats, CVE enrichment via the NVD API on incident creation, and a full audit log of every status change.
+This branch restores the morning React/Supabase modules and red/black neural visual system. No later hardening commits were merged or cherry-picked. Recovery-specific fixes are applied on top of that exact snapshot.
 
-I built it to combine two things my degree covers separately — incident response process (mapped to NIST SP 800-61) and secure full-stack development — into one working system, rather than a slide deck.
+The isolated backend now exists as `CCORP_SIRTS_REBUILD` (`cudagansojpjtligqewe`) in the existing organisation. The clean schema, Auth/profile repair, role policies, Realtime publication, and `admin-create-user` Edge Function are deployed. Live API UAT passed for all five roles. The recovery branch is still **not ready to merge or promote** until its Vercel Preview variables are scoped to this branch and browser UAT passes.
 
----
+## Local verification
 
-## Architecture
+From `client`, run `npm ci`, `npm test`, then `npm run build`.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        BROWSER                              │
-│         React 18 + Vite + Tailwind CSS + Recharts           │
-│   LoginPage │ Dashboard │ Incidents │ Detail │ Admin Panel  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP/REST (JWT Bearer Token)
-┌──────────────────────▼──────────────────────────────────────┐
-│                   EXPRESS.JS API (Port 5000)                 │
-│  Auth Middleware → Role Guard → Controllers → Prisma ORM    │
-│                                                             │
-│  /api/auth    /api/incidents    /api/users    /api/dashboard │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              PostgreSQL Database (via Prisma ORM)           │
-│   Users │ Incidents │ Comments │ AuditLogs │ Sessions       │
-└─────────────────────────────────────────────────────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  NVD CVE API (External) │
-          │  CVE enrichment on      │
-          │  incident creation      │
-          └─────────────────────────┘
+`npm test` executes the consolidated SQL against an embedded PostgreSQL (PGlite) fixture and exercises role policies through SQL. This is useful local verification, not a substitute for live Supabase Auth, REST, Realtime, Edge Functions, or browser UAT.
+
+`npm run dev` without backend variables shows a deliberate setup-pending screen. It makes no backend connection. Configure the variables in `client/.env.example` to use the fresh project. Unconfigured hosted previews show the same safe setup-pending screen; partially configured, mismatched, previous-project, or secret-key builds fail closed.
+
+## Fresh backend and Vercel activation
+
+1. The project was created fresh in `Cyril556's Org` (`fxwbavdsmcwjhnzgyytl`), region `eu-central-2`. No existing SIRTS data was restored or copied.
+2. The migrations in `supabase/migrations` are applied to the new project. The old experimental migration chain remains only in Git history.
+3. New Auth users begin with a locked profile (`role_id = NULL`). Only server-side Admin provisioning can activate a staff role, so public sign-up cannot grant application access. Public sign-ups should still be disabled in hosted Auth settings; local `config.toml` does not update that hosted setting.
+4. Sarah Namusoke (ADMIN) and Cyril Okello (SOC_LEAD) were created through Auth Admin and verified by real password login. Never insert password hashes or change PostgreSQL roles for staff authentication.
+5. `supabase/functions/admin-create-user/index.ts` is deployed to the **new** project. Gateway `verify_jwt` is false because the function verifies the bearer token via Auth, then checks the caller's current database role itself. The function also rejects all known previous project references. No unauthenticated or non-admin call may provision accounts. The service/secret key stays inside the function.
+6. Add the values below to Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Leave shared preview defaults, other branches and production unchanged.
+
+```env
+VITE_SUPABASE_URL=https://cudagansojpjtligqewe.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<new project's sb_publishable key>
+VITE_SUPABASE_PROJECT_REF=cudagansojpjtligqewe
 ```
 
-`[SCREENSHOT: dashboard view]`
-`[GIF: creating an incident → triaging → resolving, end to end]`
+7. Trigger a new preview and complete the remaining browser/Vercel checks in `docs/RECOVERY_STATUS.md`. Only merge after they pass.
 
----
+## First administrator and staff provisioning
 
-## Tech Stack
+Use a private JSON array outside the repository (or an ignored `*.private.json` file). Each element must contain `first_name`, `last_name`, `email`, `role_id`, and `password` (at least 12 characters). Use the real approved staff roster, including an ADMIN. There are no embedded passwords, canned accounts or imported UUIDs.
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 18, Vite, Tailwind CSS, React Router v6, Recharts |
-| **Backend** | Node.js, Express.js (ES Modules) |
-| **Database** | PostgreSQL via Prisma ORM |
-| **Auth** | JWT (jsonwebtoken), bcryptjs |
-| **External API** | NVD CVE API (vulnerability enrichment) |
-| **API Style** | RESTful JSON |
+Supply the three `VITE_SUPABASE_*` values above, `SUPABASE_SECRET_KEY` (the fresh project's secret), and `SIRTS_STAFF_FILE` via a secure environment loader. Run from `client`:
 
----
-
-## Key Features
-
-- **Role-Based Access Control** — ADMIN, SOC_LEAD, ANALYST, VIEWER roles with protected routes
-- **Incident Lifecycle Management** — Create, update, escalate, resolve, and close incidents
-- **SOC Dashboard** — Bar charts (incidents by day), pie charts (by category), stat cards, recent incidents feed
-- **Incident Detail View** — Full incident metadata, status updates, comments/notes, audit log timeline
-- **CVE Enrichment** — Incidents can be linked to CVE IDs with live data pulled from the NVD API
-- **Admin Panel** — User role management and incident assignment in a tabbed interface
-- **Audit Logging** — Every status change and action is logged with timestamp and actor
-- **JWT Authentication** — Stateless auth with HTTP-only considerations
-- **Dark Cybersecurity UI** — Tailwind CSS dark theme with severity/status colour-coded badges
-
----
-
-## Project Structure
-
-```
-ccorp-sirts/
-├── client/                  # React frontend (Vite)
-│   └── src/
-│       ├── api/             # Axios instance
-│       ├── components/      # Navbar
-│       ├── context/         # AuthContext (JWT)
-│       └── pages/           # All page components
-│           ├── LoginPage.jsx
-│           ├── DashboardPage.jsx
-│           ├── IncidentsPage.jsx
-│           ├── IncidentDetailPage.jsx
-│           ├── NewIncidentPage.jsx
-│           └── UsersPage.jsx
-│
-└── server/                  # Express backend
-    ├── controllers/         # Business logic
-    ├── middleware/          # Auth + Role guards
-    ├── prisma/
-    │   ├── schema.prisma    # DB schema
-    │   └── seed.js          # Demo data seeder
-    └── routes/              # API routes
+```sh
+node scripts/provision-staff.mjs
 ```
 
----
+The script uses Auth Admin `createUser`; the database trigger creates a locked profile with no role, and the server-side provisioning process activates the intended role. It then verifies a real password login and role, and signs out. On retries it does not overwrite existing accounts or reset passwords. It stops on a mismatch. Do not pass secrets as command-line arguments or commit the roster.
 
-## Getting Started
+After the first administrator is provisioned, the Users page uses the authenticated admin Edge Function, so adding another user does not replace the administrator's session.
 
-### Prerequisites
+## Role policy in this recovery
 
-- Node.js >= 18
-- PostgreSQL database
-- npm or yarn
-
-### 1. Clone & Install
-
-```bash
-git clone https://github.com/cyr6x/ccorp-sirts.git
-cd ccorp-sirts
-
-# Install server dependencies
-cd server && npm install
-
-# Install client dependencies
-cd client && npm install
-```
-
-### 2. Configure Environment
-
-```bash
-# server/.env (use .env.example as reference)
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/ccorp_sirts"
-JWT_SECRET="your-super-secret-jwt-key"
-PORT=5000
-DIRECT_URL="postgresql://USER:PASSWORD@localhost:5432/ccorp_sirts"
-
-# client/.env
-VITE_API_URL=http://localhost:5000/api
-```
-
-### 3. Database Setup
-
-```bash
-cd server
-
-# Run migrations
-npx prisma migrate dev --name init
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed demo data
-npx prisma db seed
-```
-
-### 4. Run the Dev Servers
-
-```bash
-# Terminal 1 — Backend (port 5000)
-cd server && npm run dev
-
-# Terminal 2 — Frontend (port 5173)
-cd client && npm run dev
-```
-
-Open http://localhost:5173 in your browser.
-
----
-
-## Demo Credentials
-
-| Role | Email | Password | Access |
+| Role | Incident visibility | Workflow privileges | Other modules |
 |---|---|---|---|
-| Admin | `admin@ccorp.local` | `Admin@1234` | Full system access |
-| SOC Lead | `lead@ccorp.local` | `Lead@1234` | Manage incidents, assign analysts |
-| Analyst | `analyst@ccorp.local` | `Analyst@1234` | Create and work incidents |
-| Viewer | `viewer@ccorp.local` | `Viewer@1234` | Read-only access |
+| ADMIN | All | Assign, triage, resolve, close, reopen; delete | Users, KB/assets management, reports, audit |
+| SOC_LEAD | All | Assign, triage, resolve, close, reopen | KB/assets management, reports, audit |
+| SOC_ANALYST_L1 | Created by or assigned to self | Create, comment, triage | Read KB/assets |
+| SOC_ANALYST_L2 | Created by or assigned to self | L1 plus resolve | Read KB/assets |
+| SOC_ANALYST_L3 | Created by or assigned to self | L2 plus close | Read KB/assets |
 
----
+Valid status transitions: New → Assigned or In Progress; Assigned → In Progress; In Progress → Resolved; Resolved → Closed or In Progress; Closed → In Progress (management only). Setting Assigned requires an assignee. The UI and SQL use the same tier restrictions. This policy passed live direct-API acceptance testing across all five roles on the fresh project.
 
-## API Reference
+Incident creation/update audit records and status/assignment/severity history are written atomically by database triggers. Browsers cannot forge those records. Operational tables start empty by design; no old or fabricated incidents/assets/knowledge articles are imported.
 
-### Authentication
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/login` | Login, returns JWT |
-| POST | `/api/auth/register` | Register new user |
-| GET | `/api/auth/me` | Get current user |
+## Recovery fixes
 
-### Incidents
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/incidents` | List all incidents |
-| GET | `/api/incidents/:id` | Get incident + comments + audit log |
-| POST | `/api/incidents` | Create new incident |
-| PATCH | `/api/incidents/:id` | Update incident |
-| DELETE | `/api/incidents/:id` | Delete (Admin only) |
-| POST | `/api/incidents/:id/comments` | Add comment |
+- Removed old-project defaults and shared demo passwords; isolated session storage by project.
+- Moved staff profile queries out of the Auth callback to avoid Auth lock contention; profile failures are visible instead of silently becoming a generic analyst role.
+- Replaced browser sign-up with a server-authorized staff creation function.
+- Added all five roles, RLS, explicit grants, foreign-key indexes, Auth/profile trigger and Realtime publication.
+- Added responsive hamburger navigation, URL-backed incident quick search, and management assignment controls.
+- Added tier-aware status transitions and server-owned resolution timestamps.
+- Fixed optional empty asset IP values, false-success mutations, hidden dashboard errors, and charts incorrectly calculated from only eight recent rows. Dashboard charts cover the last seven days; large-list browser pagination remains a UAT item.
 
-### Users
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/users` | List all users (Admin) |
-| PATCH | `/api/users/:id` | Update user role (Admin) |
-
-### Dashboard
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/dashboard/stats` | Incident stats for dashboard charts |
-
----
-
-## Incident Categories
-
-`PHISHING` `MALWARE` `UNAUTHORIZED_ACCESS` `DDoS` `DATA_BREACH` `INSIDER_THREAT` `OTHER`
-
-## Severity Levels
-
-| Level | Colour | SLA |
-|---|---|---|
-| CRITICAL | 🔴 Red | Immediate response required |
-| HIGH | 🟠 Orange | Respond within 1 hour |
-| MEDIUM | 🟡 Yellow | Respond within 4 hours |
-| LOW | 🟢 Green | Respond within 24 hours |
-
----
-
-## What this demonstrates
-
-Final year project for BSc (Hons) Cybersecurity and Networking — incident response workflow aligned to NIST SP 800-61 (Identify → Contain → Eradicate → Recover → Lessons Learned), combined with secure full-stack development: JWT auth, role-based authorisation, password hashing, protected routes, and input validation throughout.
-
----
-
-## Roadmap
-
-- [ ] Record a demo GIF
-- [ ] Export the architecture as a proper diagram
-- [ ] Add CVSS score display to CVE enrichment
-- [ ] Email notification on CRITICAL incident creation
-- [ ] Dockerise the full stack for one-command startup
-
----
-
-## License
-
-MIT — Academic use permitted with attribution.
+The legacy `server` directory is historical and is not used by this Vite/Supabase deployment.
