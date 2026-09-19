@@ -9,6 +9,14 @@ jobs:
   bootstrap-and-uat:
     if: contains(github.event.head_commit.message, 'bootstrap fresh dev')
     runs-on: ubuntu-latest
+    env:
+      SIRTS_SUPABASE_URL: https://pvtissqcpskpxlduxuta.supabase.co
+      SIRTS_SUPABASE_KEY: sb_publishable_t1n4jLjtt_eSWDtQj7vCaw_Q2wY6DzY
+      SIRTS_ADMIN_EMAIL: sarah.sirts.260919.f7a9@gmail.com
+      SIRTS_LEAD_EMAIL: cyril.sirts.260919.f7a9@gmail.com
+      SIRTS_L1_EMAIL: allan.sirts.260919.f7a9@gmail.com
+      SIRTS_L2_EMAIL: tony.sirts.260919.f7a9@gmail.com
+      SIRTS_L3_EMAIL: david.sirts.260919.f7a9@gmail.com
     defaults:
       run:
         working-directory: client
@@ -38,6 +46,9 @@ jobs:
 
       - name: Bootstrap real Auth users and exercise BaaS
         run: node scripts/bootstrap-fresh.mjs
+
+      - name: Live RLS and workflow abuse checks
+        run: node scripts/security-postcheck.mjs
 
       - name: Source regression tests
         run: npm test
