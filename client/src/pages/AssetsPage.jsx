@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { hasCapability } from '../lib/rbac.js';
 
 const ASSET_TYPES   = ['SERVER','WORKSTATION','NETWORK_DEVICE','DATABASE','APPLICATION','OTHER'];
 const ASSET_STATUS  = ['ACTIVE','INACTIVE','MAINTENANCE','DECOMMISSIONED'];
@@ -21,7 +22,7 @@ export default function AssetsPage() {
   const [form,     setForm]     = useState({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
   const [saving,   setSaving]   = useState(false);
 
-  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
+  const canManage = hasCapability(currentUser?.role, 'kb.manage');
 
   const load = async () => {
     setLoading(true);
