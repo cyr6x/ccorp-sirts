@@ -39,7 +39,7 @@ test('admin login, navigation, search, dashboard and privileged routes work', as
   await expect(page.getByRole('button', { name:/Assets/ })).toBeVisible();
   await page.getByRole('button', { name:/Assets/ }).click();
   await expect(page).toHaveURL(/\/assets$/);
-  await expect(page.getByRole('link', { name:'Home' })).toBeVisible();
+  await expect(page.getByRole('link', { name:'Home', exact:true })).toBeVisible();
 
   await page.getByRole('link', { name:'Home' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
