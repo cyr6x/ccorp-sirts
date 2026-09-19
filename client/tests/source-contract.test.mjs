@@ -69,3 +69,10 @@ test('all visible staff names use abbreviated display helper in key surfaces', a
     assert.match(source,/formatPersonName/,path);
   }
 });
+
+
+test('client incident creation does not write audit rows directly', async () => {
+  const source = await read('src/pages/NewIncidentPage.jsx');
+  assert.doesNotMatch(source, /from\('audit_log'\)\.insert/);
+  assert.match(source, /server-side by database triggers/);
+});
