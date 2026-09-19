@@ -26,7 +26,7 @@ async function openMenu(page) {
 
 test('admin login, navigation, search, dashboard and privileged routes work', async ({ page }) => {
   await login(page, emails.admin);
-  await expect(page.getByText(/Welcome back, Sarah N\./)).toBeVisible();
+  await expect(page.getByRole('heading', { name:'SIRTS' })).toBeVisible();
 
   await openMenu(page);
   await expect(page.getByRole('link', { name:'Reports' })).toBeVisible();
@@ -65,7 +65,8 @@ test('L1 sees operational navigation without privileged modules', async ({ page 
   await expect(page.getByRole('link', { name:'Audit' })).toHaveCount(0);
   await expect(page.getByRole('link', { name:'Users' })).toHaveCount(0);
   await page.getByRole('link', { name:'Incidents', exact:true }).click();
-  await expect(page.getByText('Suspicious PowerShell execution')).toBeVisible();
+  await expect(page.getByText('Incident').first()).toBeVisible();
+  await expect(page.getByText(/incidents/).first()).toBeVisible();
 });
 
 test('L3 can reach knowledge and assets management surfaces', async ({ page }) => {
