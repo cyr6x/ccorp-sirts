@@ -3,12 +3,13 @@ import { randomBytes } from 'node:crypto';
 
 const URL = 'https://oslthmbnukpkywapdkje.supabase.co';
 const KEY = 'sb_publishable_YRpCIiZ20GW5e5PMcT6SZg_D6GZNoJU';
+const suffix = randomBytes(4).toString('hex');
 const password = `SIRTS-UAT-${randomBytes(8).toString('hex')}!Aa9`;
 const staff = [
-  ['uat.admin@ccorp.local','UAT Admin','ADMIN','SIRTS_UAT_ADMIN_EMAIL'],
-  ['uat.lead@ccorp.local','UAT Lead','SOC_LEAD','SIRTS_UAT_LEAD_EMAIL'],
-  ['uat.l1@ccorp.local','UAT Analyst','SOC_ANALYST_L1','SIRTS_UAT_L1_EMAIL'],
-  ['uat.l3@ccorp.local','UAT Hunter','SOC_ANALYST_L3','SIRTS_UAT_L3_EMAIL'],
+  [`uat-admin-${suffix}@ccorp.local`,'UAT Admin','ADMIN','SIRTS_UAT_ADMIN_EMAIL'],
+  [`uat-lead-${suffix}@ccorp.local`,'UAT Lead','SOC_LEAD','SIRTS_UAT_LEAD_EMAIL'],
+  [`uat-l1-${suffix}@ccorp.local`,'UAT Analyst','SOC_ANALYST_L1','SIRTS_UAT_L1_EMAIL'],
+  [`uat-l3-${suffix}@ccorp.local`,'UAT Hunter','SOC_ANALYST_L3','SIRTS_UAT_L3_EMAIL'],
 ];
 
 const headers = token => ({
