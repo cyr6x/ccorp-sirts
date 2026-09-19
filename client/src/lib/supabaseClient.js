@@ -1,18 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const DEFAULT_SUPABASE_URL = 'https://pvtissqcpskpxlduxuta.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_t1n4jLjtt_eSWDtQj7vCaw_Q2wY6DzY';
+
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  DEFAULT_SUPABASE_URL;
+
 const supabasePublishableKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 
-// Never fall back to the shared production database from this development branch.
-// A harmless placeholder client keeps imports stable until the isolated branch
-// credentials are wired into the preview environment.
 export const supabase = createClient(
-  supabaseUrl || 'https://example.invalid',
-  supabasePublishableKey || 'sb_publishable_dev_not_configured',
+  supabaseUrl,
+  supabasePublishableKey,
   {
     auth: {
       persistSession: true,
