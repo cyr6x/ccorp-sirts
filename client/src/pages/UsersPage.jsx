@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { formatPersonName, initialsFor } from '../lib/userDisplay.js';
 
 const ROLES = ['ADMIN','SOC_LEAD','SOC_ANALYST'];
 
@@ -139,10 +140,10 @@ export default function UsersPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-600/30 flex items-center justify-center">
-                        <span className="text-xs font-bold text-blue-400">{u.name?.charAt(0)?.toUpperCase()}</span>
+                        <span className="text-xs font-bold text-blue-400">{initialsFor(u.name)}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-100">{u.name}</p>
+                        <p className="font-medium text-gray-100">{formatPersonName(u.name)}</p>
                         {u.id === currentUser.id && <span className="text-xs text-blue-400">(you)</span>}
                       </div>
                     </div>
