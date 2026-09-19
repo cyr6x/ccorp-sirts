@@ -22,7 +22,7 @@ export default function AssetsPage() {
   const [form,     setForm]     = useState({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
   const [saving,   setSaving]   = useState(false);
 
-  const canManage = hasCapability(currentUser?.role, 'kb.manage');
+  const canManage = hasCapability(currentUser?.role, 'assets.manage');
 
   const load = async () => {
     setLoading(true);
