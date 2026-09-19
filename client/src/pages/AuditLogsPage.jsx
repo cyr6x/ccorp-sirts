@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 const ACTIONS = ['','INCIDENT_CREATED','STATUS_CHANGED','COMMENT_ADDED','ASSIGNED','ESCALATED','RESOLVED','CLOSED','USER_LOGIN','USER_LOGOUT'];
 
@@ -88,7 +89,7 @@ export default function AuditLogsPage() {
                       {log.action?.replace(/_/g,' ')}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-xs text-gray-400 font-sans">{log.actor?.name || <span className="italic text-gray-600">System</span>}</td>
+                  <td className="px-5 py-3 text-xs text-gray-400 font-sans">{log.actor?.name ? formatPersonName(log.actor.name) : <span className="italic text-gray-600">System</span>}</td>
                   <td className="px-5 py-3 text-xs text-gray-400 font-sans max-w-xs truncate">{log.details || '\u2014'}</td>
                   <td className="px-5 py-3 hidden lg:table-cell text-xs font-sans">
                     {log.incident_id
