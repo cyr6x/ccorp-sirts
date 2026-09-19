@@ -1,0 +1,38 @@
+name: SIRTS Browser UAT Rerun
+
+on:
+  push:
+    branches:
+      - dev/chatgpt-isolated-sirts
+
+jobs:
+  browser-uat:
+    if: contains(github.event.head_commit.message, 'browser uat rerun')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: Create isolated browser-UAT accounts
+        run: node scripts/bootstrap-rerun.mjs
+
+      - name: Run source regression suite
+        run: npm test
+
+      - name: Build client
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run live browser UAT
+        run: npm run e2e
