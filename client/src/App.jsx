@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { hasCapability } from './lib/rbac.js';
 import Navbar from './components/Navbar.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import NeuralBackdrop from './components/NeuralBackdrop.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -50,7 +51,8 @@ export default function App() {
                 </div>
               </div>
             )}
-            <Routes>
+            <ErrorBoundary>
+              <Routes>
               <Route path="/login" element={!currentUser ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
               <Route path="/incidents" element={<PrivateRoute><IncidentsPage /></PrivateRoute>} />
@@ -63,7 +65,8 @@ export default function App() {
               <Route path="/assets" element={<PrivateRoute><AssetsPage /></PrivateRoute>} />
               <Route path="/audit-logs" element={<PrivateRoute capability="audit.view"><AuditLogsPage /></PrivateRoute>} />
               <Route path="*" element={<Navigate to={currentUser ? '/dashboard' : '/login'} replace />} />
-            </Routes>
+              </Routes>
+            </ErrorBoundary>
           </>
         )}
       </div>
