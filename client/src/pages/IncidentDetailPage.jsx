@@ -10,6 +10,7 @@ import {
   hasCapability,
   isSeniorIncidentRole,
 } from '../lib/rbac.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const SEV_MAP = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
@@ -61,7 +62,7 @@ export default function IncidentDetailPage() {
 
   const getUserName = userId => {
     if (!userId) return 'Unassigned';
-    return users.find(user => user.id === userId)?.name || 'Unknown';
+    return formatPersonName(users.find(user => user.id === userId)?.name || 'Unknown');
   };
 
   const refreshAudit = async () => {
@@ -340,7 +341,7 @@ export default function IncidentDetailPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-sm font-medium text-zinc-200">{comment.author?.name || 'Unknown'}</span>
+                          <span className="text-sm font-medium text-zinc-200">{formatPersonName(comment.author?.name || 'Unknown')}</span>
                           <span className="text-xs text-zinc-600">{fmt(comment.created_at)}</span>
                         </div>
                         <p className="text-sm text-zinc-400 mt-1 leading-relaxed">{comment.body}</p>
@@ -386,7 +387,7 @@ export default function IncidentDetailPage() {
                           {log.action?.replace(/_/g, ' ')}
                         </span>
                         <p className="text-xs text-zinc-400 mt-0.5">{log.details}</p>
-                        <p className="text-xs text-zinc-600">by {log.actor?.name || 'System'}</p>
+                        <p className="text-xs text-zinc-600">by {formatPersonName(log.actor?.name || 'System')}</p>
                       </div>
                     </div>
                   ))}
