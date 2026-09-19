@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { hasCapability } from '../lib/rbac.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 export default function KnowledgeBaseArticlePage() {
   const { id } = useParams();
@@ -86,7 +87,7 @@ export default function KnowledgeBaseArticlePage() {
                   <span className={`text-xs px-2 py-0.5 rounded font-medium mb-3 inline-block ${CAT_COLORS[article.category]||'bg-gray-500/20 text-gray-400'}`}>{article.category?.replace(/_/g,' ')}</span>
                   <h1 className="text-2xl font-bold text-white mt-1">{article.title}</h1>
                   <p className="text-gray-400 text-sm mt-2">{article.summary}</p>
-                  <p className="text-xs text-gray-600 mt-2">by {article.author?.name || 'Unknown'} &bull; {fmt(article.created_at)}</p>
+                  <p className="text-xs text-gray-600 mt-2">by {formatPersonName(article.author?.name || 'Unknown')} &bull; {fmt(article.created_at)}</p>
                 </div>
                 {canEdit && (
                   <div className="flex gap-2 shrink-0">
