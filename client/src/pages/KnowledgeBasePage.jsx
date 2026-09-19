@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { hasCapability } from '../lib/rbac.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 const CATEGORIES = ['PHISHING','MALWARE','UNAUTHORISED_ACCESS','DOS','OTHER'];
 
@@ -144,7 +145,7 @@ export default function KnowledgeBasePage() {
                 </div>
                 <h3 className="font-semibold text-gray-100 mb-2 group-hover:text-white leading-tight">{a.title}</h3>
                 <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{a.summary}</p>
-                <p className="text-xs text-gray-600 mt-3">by {a.author?.name || 'Unknown'}</p>
+                <p className="text-xs text-gray-600 mt-3">by {formatPersonName(a.author?.name || 'Unknown')}</p>
               </Link>
             ))}
           </div>
