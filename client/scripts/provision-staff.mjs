@@ -24,12 +24,19 @@ for (const person of roster) {
   if (existing.error) throw new Error('Profile lookup failed. Check the new project and migration before proceeding.');
   if (existing.data && existing.data.role_id !== person.role_id) throw new Error('An existing account has a different role. Review it manually.');
   if (!existing.data) {
-    const { error } = await admin.auth.admin.createUser({
+    const { data: created, error } = await admin.auth.admin.createUser({
       email, password: person.password, email_confirm: true,
       user_metadata: { first_name: person.first_name.trim(), last_name: person.last_name.trim() },
       app_metadata: { sirts_staff: true, sirts_role: person.role_id },
     });
     if (error) throw new Error(`Account creation failed (${error.code || error.status}). No existing accounts were modified.`);
+    const profile = await admin.from('users').update({
+      first_name: person.first_name.trim(), last_name: person.last_name.trim(), role_id: person.role_id,
+    }).eq('id', created.user.id).select('id').single();
+    if (profile.error) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      throw new Error('Profile activation failed; the incomplete Auth account was removed.');
+    }
   }
   const client = createClient(config.url, config.key, { auth: { persistSession: false, autoRefreshToken: false } });
   const signedIn = await client.auth.signInWithPassword({ email, password: person.password });

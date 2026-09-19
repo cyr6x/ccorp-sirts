@@ -6,7 +6,7 @@ Original main: `09c4c7f51f308226258d1b716c40758750fb927e`, preserved by `backup/
 
 This branch restores the morning React/Supabase modules and red/black neural visual system. No later hardening commits were merged or cherry-picked. Recovery-specific fixes are applied on top of that exact snapshot.
 
-**Not ready for production:** new Supabase project creation is blocked by the account's two-active-free-project quota. No fresh backend, staff accounts, remote migration, Edge Function deployment, or successful Vercel recovery preview exists yet. The existing projects and production environment have not been modified.
+The isolated backend now exists as `CCORP_SIRTS_REBUILD` (`cudagansojpjtligqewe`) in the existing organisation. The clean schema, Auth/profile repair, role policies, Realtime publication, and `admin-create-user` Edge Function are deployed. Live API UAT passed for all five roles. The recovery branch is still **not ready to merge or promote** until its Vercel Preview variables are scoped to this branch and browser UAT passes.
 
 ## Local verification
 
@@ -16,15 +16,22 @@ From `client`, run `npm ci`, `npm test`, then `npm run build`.
 
 `npm run dev` without backend variables shows a deliberate setup-pending screen. It makes no backend connection. Configure the variables in `client/.env.example` to use the fresh project. Unconfigured hosted previews show the same safe setup-pending screen; partially configured, mismatched, previous-project, or secret-key builds fail closed.
 
-## Fresh backend setup after quota is resolved
+## Fresh backend and Vercel activation
 
-1. Create `CCORP_SIRTS_REBUILD` in `Cyril556's Org` (`fxwbavdsmcwjhnzgyytl`), region `eu-central-2`. Do not restore a backup or copy data from any existing project.
-2. Record its project reference, URL and publishable key. Apply the single SQL file in `supabase/migrations` to this empty project. The old experimental migration chain was removed; it remains in Git history.
-3. Disable public sign-ups in the hosted Auth settings. The local `config.toml` does not automatically update hosted Auth settings. The profile trigger additionally requires trusted staff app metadata, so public signup cannot grant staff access even if accidentally enabled.
-4. Provision accounts through Auth Admin using `client/scripts/provision-staff.mjs`, described below. Never insert password hashes or change PostgreSQL roles for staff authentication.
-5. Deploy `supabase/functions/admin-create-user/index.ts` to the **new** project. Set function secret `SIRTS_PROJECT_REF` to the new reference. Gateway `verify_jwt` is false because the function verifies the actual bearer token via Auth, then checks the caller's current database role itself. No unauthenticated or non-admin call may provision accounts. The service/secret key stays inside the function.
-6. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_SUPABASE_PROJECT_REF` to Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Use these values locally for development. Leave shared preview defaults, other branches and production unchanged.
-7. Trigger a new preview, run the live gate in `docs/RECOVERY_STATUS.md`, and only merge after it passes.
+1. The project was created fresh in `Cyril556's Org` (`fxwbavdsmcwjhnzgyytl`), region `eu-central-2`. No existing SIRTS data was restored or copied.
+2. The migrations in `supabase/migrations` are applied to the new project. The old experimental migration chain remains only in Git history.
+3. New Auth users begin with a locked profile (`role_id = NULL`). Only server-side Admin provisioning can activate a staff role, so public sign-up cannot grant application access. Public sign-ups should still be disabled in hosted Auth settings; local `config.toml` does not update that hosted setting.
+4. Sarah Namusoke (ADMIN) and Cyril Okello (SOC_LEAD) were created through Auth Admin and verified by real password login. Never insert password hashes or change PostgreSQL roles for staff authentication.
+5. `supabase/functions/admin-create-user/index.ts` is deployed to the **new** project. Gateway `verify_jwt` is false because the function verifies the bearer token via Auth, then checks the caller's current database role itself. The function also rejects all known previous project references. No unauthenticated or non-admin call may provision accounts. The service/secret key stays inside the function.
+6. Add the values below to Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Leave shared preview defaults, other branches and production unchanged.
+
+```env
+VITE_SUPABASE_URL=https://cudagansojpjtligqewe.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<new project's sb_publishable key>
+VITE_SUPABASE_PROJECT_REF=cudagansojpjtligqewe
+```
+
+7. Trigger a new preview and complete the remaining browser/Vercel checks in `docs/RECOVERY_STATUS.md`. Only merge after they pass.
 
 ## First administrator and staff provisioning
 
@@ -36,7 +43,7 @@ Supply the three `VITE_SUPABASE_*` values above, `SUPABASE_SECRET_KEY` (the fres
 node scripts/provision-staff.mjs
 ```
 
-The script uses Auth Admin `createUser`, relies on the transactionally created profile, verifies a real password login and role, and signs out. On retries it does not overwrite existing accounts or reset passwords. It stops on a mismatch. Do not pass secrets as command-line arguments or commit the roster.
+The script uses Auth Admin `createUser`; the database trigger creates a locked profile with no role, and the server-side provisioning process activates the intended role. It then verifies a real password login and role, and signs out. On retries it does not overwrite existing accounts or reset passwords. It stops on a mismatch. Do not pass secrets as command-line arguments or commit the roster.
 
 After the first administrator is provisioned, the Users page uses the authenticated admin Edge Function, so adding another user does not replace the administrator's session.
 
@@ -50,7 +57,7 @@ After the first administrator is provisioned, the Users page uses the authentica
 | SOC_ANALYST_L2 | Created by or assigned to self | L1 plus resolve | Read KB/assets |
 | SOC_ANALYST_L3 | Created by or assigned to self | L2 plus close | Read KB/assets |
 
-Valid status transitions: New → Assigned or In Progress; Assigned → In Progress; In Progress → Resolved; Resolved → Closed or In Progress; Closed → In Progress (management only). Setting Assigned requires an assignee. The UI and SQL use the same tier restrictions. This is the proposed recovery policy and still requires live acceptance testing.
+Valid status transitions: New → Assigned or In Progress; Assigned → In Progress; In Progress → Resolved; Resolved → Closed or In Progress; Closed → In Progress (management only). Setting Assigned requires an assignee. The UI and SQL use the same tier restrictions. This policy passed live direct-API acceptance testing across all five roles on the fresh project.
 
 Incident creation/update audit records and status/assignment/severity history are written atomically by database triggers. Browsers cannot forge those records. Operational tables start empty by design; no old or fabricated incidents/assets/knowledge articles are imported.
 
@@ -62,6 +69,6 @@ Incident creation/update audit records and status/assignment/severity history ar
 - Added all five roles, RLS, explicit grants, foreign-key indexes, Auth/profile trigger and Realtime publication.
 - Added responsive hamburger navigation, URL-backed incident quick search, and management assignment controls.
 - Added tier-aware status transitions and server-owned resolution timestamps.
-- Fixed optional empty asset IP values, false-success mutations, hidden dashboard errors, and charts incorrectly calculated from only eight recent rows. Dashboard charts cover the last seven days; API pagination limits remain a live UAT item for large datasets.
+- Fixed optional empty asset IP values, false-success mutations, hidden dashboard errors, and charts incorrectly calculated from only eight recent rows. Dashboard charts cover the last seven days; large-list browser pagination remains a UAT item.
 
 The legacy `server` directory is historical and is not used by this Vite/Supabase deployment.

@@ -25,7 +25,7 @@ create table public.users (
  first_name text not null check (length(btrim(first_name)) > 0),
  last_name text not null check (length(btrim(last_name)) > 0),
  name text generated always as (first_name || ' ' || last_name) stored,
- role_id text not null references public.roles(id),
+ role_id text references public.roles(id),
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now()
 );
@@ -124,17 +124,14 @@ $$;
 revoke all on function app_private.current_role() from public;
 grant execute on function app_private.current_role() to authenticated;
 
--- Staff provisioning must use Auth Admin createUser with trusted app_metadata.
--- User-editable user_metadata supplies names only, never privileges.
+-- Every Auth identity receives a locked profile. The server-side Admin API
+-- assigns a role after creation; user-editable metadata never grants access.
 create function app_private.handle_new_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
- if new.raw_app_meta_data->>'sirts_staff' is distinct from 'true' then
-   raise exception 'Staff accounts must be provisioned by an administrator';
- end if;
  insert into public.users(id,email,first_name,last_name,role_id)
  values(new.id,new.email,btrim(new.raw_user_meta_data->>'first_name'),
-        btrim(new.raw_user_meta_data->>'last_name'),new.raw_app_meta_data->>'sirts_role');
+        btrim(new.raw_user_meta_data->>'last_name'),null);
  return new;
 end $$;
 revoke all on function app_private.handle_new_user() from public;

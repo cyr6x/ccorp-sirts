@@ -14,24 +14,25 @@ test('backend isolation rejects missing, mismatched, retired, and secret configu
   for (const ref of RETIRED_PROJECTS) assert.throws(() => validateBackendConfig({ ...env, VITE_SUPABASE_URL: `https://${ref}.supabase.co`, VITE_SUPABASE_PROJECT_REF: ref }));
 });
 
-test('clean baseline: SQL execution and direct role/row authorization', async t => {
+test('clean migration chain: SQL execution and direct role/row authorization', async t => {
   const db = new PGlite();
   try {
     // Local-only Auth fixture; no real passwords or remote Auth users are created.
-    await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+    await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create role supabase_auth_admin;
       create schema auth;
       create table auth.users(id uuid primary key, email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb);
       create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
       grant usage on schema auth to authenticated;
       create publication supabase_realtime;`);
     const dir = new URL('../../supabase/migrations/', import.meta.url);
-    const files = await readdir(dir);
-    assert.equal(files.length, 1, 'only the clean baseline is applied');
-    await db.exec(await readFile(new URL(files[0], dir), 'utf8'));
+    const files = (await readdir(dir)).filter(name => name.endsWith('.sql')).sort();
+    assert(files.length > 0, 'the clean migration chain is present');
+    for (const file of files) await db.exec(await readFile(new URL(file, dir), 'utf8'));
     const roles = ['ADMIN','SOC_LEAD','SOC_ANALYST_L1','SOC_ANALYST_L2','SOC_ANALYST_L3'];
     const ids = roles.map((_, i) => `00000000-0000-4000-8000-00000000000${i + 1}`);
     for (let i = 0; i < roles.length; i++) {
       await db.query(`insert into auth.users values ($1,$2,$3,$4)`, [ids[i], `${i}@example.test`, {first_name:'Test',last_name:roles[i]}, {sirts_staff:true,sirts_role:roles[i]}]);
+      await db.query('update public.users set role_id=$1 where id=$2', [roles[i], ids[i]]);
     }
     const as = async (index, sql, params = []) => {
       await db.exec('set role authenticated');
@@ -46,7 +47,17 @@ test('clean baseline: SQL execution and direct role/row authorization', async t 
       }
     });
     await t.test('public signup cannot choose a staff role using editable metadata', async () => {
-      await assert.rejects(db.query('insert into auth.users values ($1,$2,$3,$4)', ['00000000-0000-4000-8000-000000000009','fake@example.test',{first_name:'Fake',last_name:'Admin',sirts_staff:true,sirts_role:'ADMIN'},{}]), /provisioned/);
+      const fakeId = '00000000-0000-4000-8000-000000000009';
+      await db.query('insert into auth.users values ($1,$2,$3,$4)', [fakeId,'fake@example.test',{first_name:'Fake',last_name:'Admin',sirts_staff:true,sirts_role:'ADMIN'},{}]);
+      assert.equal((await db.query('select role_id from public.users where id=$1', [fakeId])).rows[0].role_id, null);
+      await db.exec('set role authenticated');
+      await db.query("select set_config('request.jwt.claim.sub',$1,false)", [fakeId]);
+      try {
+        assert.equal((await db.query('select id from public.roles')).rows.length, 0);
+        await assert.rejects(db.query("insert into public.incidents(title,created_by) values ('Denied',$1)", [fakeId]), /row-level security/);
+      } finally {
+        await db.exec('reset role');
+      }
     });
     await t.test('all tables deny anonymous reads', async () => {
       await db.exec('set role anon');

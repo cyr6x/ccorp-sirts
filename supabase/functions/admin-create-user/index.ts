@@ -8,9 +8,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply(405, { error: 'Method not allowed' });
   try {
     const url = Deno.env.get('SUPABASE_URL')!;
-    const expected = Deno.env.get('SIRTS_PROJECT_REF');
     const retired = ['tvjyllnfuptdcbirjvev','oslthmbnukpkywapdkje','pvtissqcpskpxlduxuta','txphvpzcbamricsskvoe','qurgnzdxrkkvapsofzcs'];
-    if (!expected || retired.includes(expected) || url !== `https://${expected}.supabase.co`) {
+    const projectRef = new URL(url).hostname.split('.')[0];
+    if (!/^[a-z]{20}$/.test(projectRef) || retired.includes(projectRef)) {
       return reply(503, { error: 'Recovery project configuration is incomplete' });
     }
     const secret = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -34,7 +34,13 @@ Deno.serve(async (req) => {
       app_metadata: { sirts_staff: true, sirts_role: role_id },
     });
     if (error) return reply(400, { error: error.message });
-    // The database trigger creates the profile in the Auth insert transaction.
+    const profile = await admin.from('users').update({
+      first_name: first_name.trim(), last_name: last_name.trim(), role_id,
+    }).eq('id', data.user.id).select('id').single();
+    if (profile.error) {
+      await admin.auth.admin.deleteUser(data.user.id);
+      return reply(500, { error: 'The staff profile could not be activated.' });
+    }
     return reply(201, { id: data.user.id });
   } catch {
     return reply(400, { error: 'Could not create the account. Check the request and retry.' });
