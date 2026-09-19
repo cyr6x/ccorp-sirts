@@ -1,0 +1,38 @@
+name: SIRTS Fresh BaaS UAT
+
+on:
+  push:
+    branches:
+      - dev/chatgpt-isolated-sirts
+
+jobs:
+  bootstrap-and-uat:
+    if: contains(github.event.head_commit.message, 'bootstrap fresh dev')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: Bootstrap real Auth users and exercise BaaS
+        run: node scripts/bootstrap-live.mjs
+
+      - name: Source regression tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser UAT against fresh Supabase
+        run: npm run e2e
