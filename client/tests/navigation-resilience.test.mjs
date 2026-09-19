@@ -46,3 +46,11 @@ test('dashboard reports data failures instead of silently blanking', async () =>
   assert.match(dashboard, /Some dashboard data could not be loaded/);
   assert.match(dashboard, /setError/);
 });
+
+
+test('development branch cannot silently fall back to production Supabase', async () => {
+  const client = await read('src/lib/supabaseClient.js');
+  assert.doesNotMatch(client, /tvjyllnfuptdcbirjvev\.supabase\.co/);
+  assert.match(client, /supabaseConfigured/);
+  assert.match(client, /example\.invalid/);
+});
