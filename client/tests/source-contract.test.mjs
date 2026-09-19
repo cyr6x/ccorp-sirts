@@ -116,7 +116,8 @@ test('staff provisioning enforces the CCorp domain and strong temporary password
 
 test('admin staff form mirrors server password policy', async () => {
   const users = await read('src/pages/UsersPage.jsx');
-  assert.match(users, /pattern="/);
+  assert.match(users, /STRONG_PASSWORD_PATTERN/);
+  assert.match(users, /STAFF_EMAIL_PATTERN/);
   assert.match(users, /upper, lower, number, and symbol/);
 });
 
