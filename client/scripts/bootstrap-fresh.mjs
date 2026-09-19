@@ -2,8 +2,8 @@ import { appendFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
-const url = 'https://oslthmbnukpkywapdkje.supabase.co';
-const key = 'sb_publishable_YRpCIiZ20GW5e5PMcT6SZg_D6GZNoJU';
+const url = 'https://pvtissqcpskpxlduxuta.supabase.co';
+const key = 'sb_publishable_t1n4jLjtt_eSWDtQj7vCaw_Q2wY6DzY';
 const password = `SIRTS-${randomBytes(8).toString('hex')}!Aa9`;
 
 const staff = [
