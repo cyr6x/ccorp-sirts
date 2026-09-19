@@ -13,7 +13,7 @@
 
 ## Completed local checks
 
-- Vite build passes without backend variables and renders setup-pending state.
+- Vite build passes without backend variables and renders setup-pending state. This prevents automatic recovery previews from generating failed-deployment alerts before the fresh project exists.
 - Eight automated tests pass, including actual baseline SQL execution in PGlite, five-role profile lookup, anonymous denial, cross-user row access, profile self-promotion denial, direct assignment and workflow restrictions, forged audit denial, and KB/assets write restrictions.
 - These checks use isolated synthetic local Auth fixtures, not remote Supabase Auth accounts.
 - Browser verification is blocked in this runtime: agent-browser could not start its daemon, Playwright had no Chromium executable, and the browser download timed out. No browser UAT pass is claimed.

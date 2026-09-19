@@ -14,7 +14,7 @@ From `client`, run `npm ci`, `npm test`, then `npm run build`.
 
 `npm test` executes the consolidated SQL against an embedded PostgreSQL (PGlite) fixture and exercises role policies through SQL. This is useful local verification, not a substitute for live Supabase Auth, REST, Realtime, Edge Functions, or browser UAT.
 
-`npm run dev` without backend variables shows a deliberate setup-pending screen. It makes no backend connection. Configure the variables in `client/.env.example` to use the fresh project. Hosted builds fail when variables are missing, mismatched, point at previous projects, or contain a secret instead of a publishable key.
+`npm run dev` without backend variables shows a deliberate setup-pending screen. It makes no backend connection. Configure the variables in `client/.env.example` to use the fresh project. Unconfigured hosted previews show the same safe setup-pending screen; partially configured, mismatched, previous-project, or secret-key builds fail closed.
 
 ## Fresh backend setup after quota is resolved
 

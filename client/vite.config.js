@@ -4,8 +4,14 @@ import { validateBackendConfig } from './src/lib/backendConfig.js';
 
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
-  // Local unconfigured builds render the setup screen. Hosted builds must be isolated.
-  if (env.VERCEL || env.VITE_SUPABASE_URL || env.VITE_SUPABASE_PUBLISHABLE_KEY) validateBackendConfig(env);
+  // An entirely unconfigured recovery preview renders the setup-pending screen.
+  // Any partial or incorrect backend configuration still fails closed at build time.
+  const hasBackendConfig = [
+    env.VITE_SUPABASE_URL,
+    env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    env.VITE_SUPABASE_PROJECT_REF,
+  ].some(Boolean);
+  if (hasBackendConfig) validateBackendConfig(env);
   return {
   plugins: [react()],
   server: {
@@ -24,4 +30,3 @@ export default defineConfig(({ mode }) => {
   },
 };
 });
-
