@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { hasCapability } from '../lib/rbac.js';
 
 const CATEGORIES = ['PHISHING','MALWARE','UNAUTHORISED_ACCESS','DOS','OTHER'];
 
@@ -16,7 +17,7 @@ export default function KnowledgeBasePage() {
   const [form,      setForm]      = useState({ title:'', summary:'', content:'', category:'PHISHING' });
   const [saving,    setSaving]    = useState(false);
 
-  const canCreate = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
+  const canCreate = hasCapability(currentUser?.role, 'kb.manage');
 
   const load = async () => {
     setLoading(true);
