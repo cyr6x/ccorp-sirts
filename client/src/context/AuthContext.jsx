@@ -20,11 +20,14 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Your SIRTS staff profile could not be loaded.');
     }
 
+    const role = data.role?.name ?? data.role_id;
+    if (!role) throw new Error('Your SIRTS account has no assigned role.');
+
     return {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role?.name ?? data.role_id ?? 'SOC_ANALYST_L3',
+      role,
       permissions: data.role?.permissions ?? {},
       role_id: data.role_id,
     };
