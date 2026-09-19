@@ -65,7 +65,7 @@ test('L1 sees operational navigation without privileged modules', async ({ page 
   await expect(page.getByRole('link', { name:'Audit' })).toHaveCount(0);
   await expect(page.getByRole('link', { name:'Users' })).toHaveCount(0);
   await page.getByRole('link', { name:'Incidents', exact:true }).click();
-  await expect(page.getByText('Incident').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name:/Incident Registry/i })).toBeVisible();
   await expect(page.getByText(/incidents/).first()).toBeVisible();
 });
 
