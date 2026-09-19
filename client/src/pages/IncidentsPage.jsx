@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
@@ -171,7 +172,7 @@ export default function IncidentsPage() {
                   <td className="px-5 py-4"><span className={SEV_MAP[inc.severity]}>{inc.severity}</span></td>
                   <td className="px-5 py-4"><span className={STATUS_MAP[inc.status] || 'status-open'}>{inc.status}</span></td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-400 text-xs">
-                    {inc.assigned_to_user?.name || <span className="text-gray-600 italic">Unassigned</span>}
+                    {inc.assigned_to_user?.name ? formatPersonName(inc.assigned_to_user.name) : <span className="text-gray-600 italic">Unassigned</span>}
                   </td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">{fmt(inc.created_at)}</td>
                 </tr>
