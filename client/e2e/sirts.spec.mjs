@@ -262,11 +262,11 @@ async function installMockBackend(page, role, options = {}) {
       }
     }
 
-    if (url.pathname === '/functions/v1/admin-create-user' && method === 'POST') {
+    if (url.pathname.includes('/functions/v1/admin-create-user') && method === 'POST') {
       const body = JSON.parse(request.postData() || '{}');
       mutations.push({ table:'admin-create-user', method, body });
       return route.fulfill({
-        status:201,
+        status:200,
         headers:jsonHeaders,
         body:JSON.stringify({
           user:{ id:'created-user', email:body.email, name:body.name, role_id:body.role_id },
@@ -318,6 +318,7 @@ test('administrator can traverse privileged modules and perform core actions', a
   await page.locator('input[name="password"]').fill('TempSecure!123');
   await page.locator('select[name="role_id"]').selectOption('SOC_ANALYST_L1');
   await page.getByRole('button', { name:'Create staff user' }).click();
+  await expect.poll(() => backend.mutations.some(mutation => mutation.table === 'admin-create-user')).toBeTruthy();
   await expect(page.getByText('Janet Nanyonga was created successfully.')).toBeVisible();
 
   await page.getByRole('link', { name:'Create' }).click();
@@ -374,7 +375,7 @@ test('L1 view exposes claim/progress workflow but no privileged modules', async 
   await page.getByRole('button', { name:'Update status' }).click();
   await expect.poll(() => backend.getIncident().status).toBe('In Progress');
 
-  await expect(page.getByText('Severity', { exact:true })).toHaveCount(1);
+  await expect(page.getByText('HIGH', { exact:true })).toBeVisible();
   await expect(page.getByRole('button', { name:'Update severity' })).toHaveCount(0);
   await expect(page.getByRole('button', { name:'Escalate' })).toHaveCount(0);
 });
