@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import { hasCapability } from './lib/rbac.js';
+import { supabaseConfigured } from './lib/supabaseClient.js';
 import Navbar from './components/Navbar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import NeuralBackdrop from './components/NeuralBackdrop.jsx';
@@ -29,6 +30,23 @@ const PrivateRoute = ({ children, capability }) => {
 
 export default function App() {
   const { currentUser, loading, authError } = useAuth();
+
+  if (!supabaseConfigured) {
+    return (
+      <div className="app-shell">
+        <NeuralBackdrop />
+        <div className="app-content min-h-screen flex items-center justify-center px-6">
+          <div className="w-full max-w-lg rounded-xl border border-amber-500/20 bg-zinc-950/90 p-6 shadow-2xl">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-amber-300 font-semibold">Development environment</p>
+            <h1 className="text-xl font-semibold text-white mt-2">Isolated database not configured yet.</h1>
+            <p className="text-sm text-zinc-500 mt-3">
+              This branch intentionally refuses to fall back to the shared SIRTS database. Wire the dedicated Supabase development branch before testing.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
