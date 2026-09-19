@@ -1,0 +1,8 @@
+project_id = "ccorp-sirts-rebuild"
+
+[auth]
+enable_signup = false
+
+[functions.admin-create-user]
+# The handler validates the access token with Auth and checks the current DB role.
+verify_jwt = false

@@ -38,7 +38,7 @@ export default function AssetsPage() {
   const handleCreate = async e => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('assets').insert(form);
+    const { error } = await supabase.from('assets').insert({ ...form, ip_address: form.ip_address.trim() || null });
     if (error) { setError(error.message); setSaving(false); return; }
     setShowForm(false);
     setForm({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
@@ -47,7 +47,7 @@ export default function AssetsPage() {
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    const { error } = await supabase.from('assets').update({ status: newStatus }).eq('id', id);
+    const { error } = await supabase.from('assets').update({ status: newStatus }).eq('id', id).select('id').single();
     if (error) { setError(error.message); return; }
     setAssets(prev => prev.map(a => a.id === id ? {...a, status: newStatus} : a));
   };

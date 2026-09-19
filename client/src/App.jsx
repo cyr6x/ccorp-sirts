@@ -1,3 +1,4 @@
+import { configurationError } from './lib/supabaseClient.js';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/Navbar.jsx';
@@ -31,6 +32,18 @@ const PrivateRoute = ({ children, roles }) => {
 
 export default function App() {
   const { currentUser, loading } = useAuth();
+
+  if (configurationError) return (
+    <div className="app-shell"><NeuralBackdrop />
+      <main className="app-content min-h-screen flex items-center justify-center p-6">
+        <section className="login-card max-w-lg p-8" role="alert">
+          <p className="signal-label mb-3">CCorp SIRTS · Recovery workspace</p>
+          <h1 className="text-2xl text-white mb-4">Backend setup pending</h1>
+          <p className="text-gray-300">{configurationError}</p>
+        </section>
+      </main>
+    </div>
+  );
 
   if (loading) return (
     <div className="app-shell">

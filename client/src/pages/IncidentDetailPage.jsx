@@ -1,3 +1,4 @@
+import { isManager, allowedStatuses } from '../lib/permissions.js';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -5,7 +6,6 @@ import { supabase } from '../lib/supabaseClient.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
 const STATUS_MAP = { New:'status-open', Assigned:'status-in_progress', 'In Progress':'status-in_progress', Resolved:'status-resolved', Closed:'status-closed' };
-const STATUSES   = ['New','Assigned','In Progress','Resolved','Closed'];
 const SLA_TARGETS = { CRITICAL:4, HIGH:8, MEDIUM:24, LOW:72 };
 
 export default function IncidentDetailPage() {
@@ -26,14 +26,15 @@ export default function IncidentDetailPage() {
   const [error,       setError]       = useState('');
   const channelRef = useRef(null);
 
-  const canEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD' ||
-    (currentUser?.role === 'SOC_ANALYST' && incident?.assigned_to === currentUser?.id);
+  const canManage = isManager(currentUser?.role);
+  const canEdit = canManage || incident?.assigned_to === currentUser?.id || incident?.created_by === currentUser?.id;
+
 
   const fmt = d => d
     ? new Date(d).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
     : 'N/A';
 
-  const getUserName = uid => users.find(u => u.id === uid)?.name || 'Unknown';
+  const getUserName = uid => uid ? users.find(u => u.id === uid)?.name || 'Unknown' : 'Unassigned';
 
   useEffect(() => {
     const load = async () => {
@@ -41,10 +42,12 @@ export default function IncidentDetailPage() {
       const [incRes, cmtRes, logRes, usrRes] = await Promise.all([
         supabase.from('incidents').select('*').eq('id', id).single(),
         supabase.from('comments').select('*, author:users(name)').eq('incident_id', id).order('created_at', { ascending: true }),
-        supabase.from('audit_log').select('*, actor:users(name)').eq('incident_id', id).order('created_at', { ascending: false }),
+        canManage ? supabase.from('audit_log').select('*, actor:users(name)').eq('incident_id', id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
         supabase.from('users').select('id, name'),
       ]);
       if (incRes.error) { setError('Incident not found or access denied.'); setLoading(false); return; }
+      const relatedError = [cmtRes, logRes, usrRes].find(result => result.error)?.error;
+      setError(relatedError?.message || '');
       setIncident(incRes.data);
       setStatus(incRes.data.status);
       setComments(cmtRes.data || []);
@@ -81,37 +84,21 @@ export default function IncidentDetailPage() {
     return () => { supabase.removeChannel(channelRef.current); };
   }, [id]);
 
-  const handleStatusSave = async () => {
+  const saveIncident = async patch => {
     setSaving(true);
-    const old = incident.status;
-    const { error } = await supabase
-      .from('incidents')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    setError('');
+    const { data, error } = await supabase.from('incidents').update(patch).eq('id', id).select().single();
     if (error) { setError(error.message); setSaving(false); return; }
-    await supabase.from('audit_log').insert({
-      incident_id: id,
-      user_id:     currentUser.id,
-      action:      'STATUS_CHANGED',
-      details:     `Status changed: ${old} -> ${status}`,
-    });
-    await supabase.from('incident_updates').insert({
-      incident_id:   id,
-      changed_by:    currentUser.id,
-      field_changed: 'status',
-      old_value:     old,
-      new_value:     status,
-    });
-    // Optimistically update local audit list
-    setAuditLogs(prev => [{
-      id: Date.now(),
-      action: 'STATUS_CHANGED',
-      details: `Status changed: ${old} -> ${status}`,
-      created_at: new Date().toISOString(),
-      actor: { name: currentUser.name },
-    }, ...prev]);
+    setIncident(data);
+    setStatus(data.status);
+    if (canManage) {
+      const result = await supabase.from('audit_log').select('*, actor:users(name)').eq('incident_id', id).order('created_at', { ascending: false });
+      if (result.error) setError('Saved, but the audit trail could not be refreshed.');
+      else setAuditLogs(result.data || []);
+    }
     setSaving(false);
   };
+  const handleStatusSave = () => saveIncident({ status });
 
   const handleAddComment = async () => {
     if (!commentBody.trim()) return;
@@ -144,7 +131,7 @@ export default function IncidentDetailPage() {
   );
 
   const target   = SLA_TARGETS[incident.severity] || 24;
-  const elapsed  = (Date.now() - new Date(incident.created_at)) / 3600000;
+  const elapsed  = (new Date(incident.resolved_at || Date.now()) - new Date(incident.created_at)) / 3600000;
   const slaPct   = Math.min((elapsed / target) * 100, 100);
   const slaColor = slaPct >= 100 ? 'bg-red-500' : slaPct >= 75 ? 'bg-yellow-500' : 'bg-green-500';
   const slaLabel = slaPct >= 100 ? 'SLA Breached' : slaPct >= 75 ? 'SLA At Risk' : 'Within SLA';
@@ -188,7 +175,7 @@ export default function IncidentDetailPage() {
 
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
               <div className="flex border-b border-gray-800">
-                {['comments', 'audit'].map(t => (
+                {(canManage ? ['comments', 'audit'] : ['comments']).map(t => (
                   <button key={t} onClick={() => setTab(t)}
                     className={`px-5 py-3 text-sm font-medium transition-colors capitalize ${
                       tab === t
@@ -264,11 +251,21 @@ export default function IncidentDetailPage() {
 
           {/* RIGHT: sidebar */}
           <div className="space-y-4">
+            {canManage && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <label htmlFor="assignee" className="block text-xs text-gray-400 mb-3">Assign incident</label>
+                <select id="assignee" className="select w-full" disabled={saving}
+                  value={incident.assigned_to || ''} onChange={e => saveIncident({ assigned_to: e.target.value || null })}>
+                  <option value="">Unassigned</option>
+                  {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </div>
+            )}
             {canEdit && (
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Update Status</h3>
                 <select value={status} onChange={e => setStatus(e.target.value)} className="select w-full">
-                  {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  {allowedStatuses(currentUser.role, incident).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button
                   onClick={handleStatusSave}

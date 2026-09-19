@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,86 +35,48 @@ export default function Navbar() {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => { setOpen(false); }, [location.pathname, location.search]);
+  useEffect(() => {
+    const close = event => { if (event.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, []);
   if (!currentUser) return null;
-
   const visibleLinks = navLinks.filter(link => !link.roles || link.roles.includes(currentUser.role));
-  const roleColor = ROLE_COLORS[currentUser.role] ?? 'text-gray-300';
-  const roleLabel = ROLE_LABELS[currentUser.role] ?? currentUser.role;
-
+  const handleLogout = async () => {
+    try { await logout(); navigate('/login'); }
+    catch { setError('Sign out failed. Please retry.'); }
+  };
   return (
-    <nav className="enterprise-nav sticky top-0 z-50">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex items-center h-[68px] gap-5">
-        <Link to="/dashboard" className="flex items-center gap-3 shrink-0 group">
-          <div className="enterprise-brandmark w-9 h-9 rounded-lg flex items-center justify-center transition-transform group-hover:scale-[1.03]">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.2l2.2 2.2 4.8-5" />
-            </svg>
-          </div>
-          <div className="leading-none">
-            <div>
-              <span className="font-semibold text-white text-sm tracking-[0.02em]">CCorp</span>
-              <span className="ml-1.5 font-semibold text-red-400 text-sm">SIRTS</span>
-            </div>
-            <span className="text-[9px] uppercase tracking-[0.19em] text-gray-600">Security operations</span>
-          </div>
-        </Link>
-
-        <div className="h-7 w-px bg-white/[0.07] shrink-0" />
-
-        <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
-          {visibleLinks.map(link => {
-            const active = location.pathname === link.to ||
-              (link.to !== '/dashboard' && link.to !== '/incidents/new' && location.pathname.startsWith(link.to));
-
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium transition-all whitespace-nowrap ${active ? 'nav-link-active' : 'nav-link-idle'}`}
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
-                </svg>
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/[0.07] bg-white/[0.025]">
-            <span className="signal-dot" />
-            <span className="text-[10px] text-gray-500 uppercase tracking-[0.16em] font-semibold">Live fabric</span>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-              <span className="text-xs font-semibold text-gray-200">{currentUser.name?.charAt(0)?.toUpperCase()}</span>
-            </div>
-            <div className="hidden md:block">
-              <p className="text-[13px] font-medium text-gray-100 leading-none">{currentUser.name}</p>
-              <p className={`text-[10px] uppercase tracking-[0.12em] leading-none mt-1.5 ${roleColor}`}>{roleLabel}</p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/[0.04] rounded-md transition-all border border-transparent hover:border-white/[0.07]"
-          >
-            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
+    <nav className="enterprise-nav sticky top-0 z-50" aria-label="Main navigation">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 flex flex-wrap items-center min-h-[68px] gap-3 py-3">
+        <button className="w-10 h-10 rounded-lg border border-white/10 text-gray-200" aria-label="Toggle navigation"
+          aria-expanded={open} aria-controls="main-menu" onClick={() => setOpen(value => !value)}>
+          <svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <Link to="/dashboard" className="font-semibold text-white shrink-0">CCorp <span className="text-red-400">SIRTS</span></Link>
+        <form role="search" className="order-last sm:order-none w-full sm:w-auto sm:flex-1 sm:max-w-md sm:mx-auto flex gap-2"
+          onSubmit={event => { event.preventDefault(); navigate(`/incidents?q=${encodeURIComponent(query.trim())}`); }}>
+          <input className="input w-full" aria-label="Quick search incidents" placeholder="Search incidents, assets or IPs…" value={query} onChange={event => setQuery(event.target.value)} />
+          <button className="btn-primary" type="submit">Search</button>
+        </form>
+        <div className="hidden lg:block text-right"><p className="text-sm text-gray-200">{currentUser.name}</p>
+          <p className="text-xs text-gray-500">{ROLE_LABELS[currentUser.role]}</p></div>
+        <button onClick={handleLogout} className="ml-auto sm:ml-0 text-sm text-gray-300 hover:text-white">Sign out</button>
       </div>
+      {error && <p role="alert" className="px-6 pb-3 text-red-300 text-sm">{error}</p>}
+      {open && <div id="main-menu" className="border-t border-white/10 bg-gray-950 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {visibleLinks.map(link => {
+          const active = location.pathname === link.to ||
+            (link.to === '/incidents' && location.pathname.startsWith('/incidents/') && location.pathname !== '/incidents/new') ||
+            (link.to === '/knowledge-base' && location.pathname.startsWith('/knowledge-base/'));
+          return <Link key={link.to} to={link.to} aria-current={active ? 'page' : undefined}
+            className={`px-3 py-3 rounded-lg text-sm ${active ? 'nav-link-active' : 'nav-link-idle'}`}>{link.label}</Link>;
+        })}
+      </div>}
     </nav>
   );
 }

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const ROLES = ['ADMIN','SOC_LEAD','SOC_ANALYST'];
 
 export default function UsersPage() {
   const { currentUser } = useAuth();
@@ -35,19 +34,19 @@ export default function UsersPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
-    // 1. Create auth user via admin API is not available client-side;
-    //    instead use supabase.auth.signUp then update public.users
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email:    form.email,
-      password: form.password,
-      options:  { data: { name: form.name } },
-    });
-    if (authErr) { setError(authErr.message); setSaving(false); return; }
-    // 2. Update public.users row created by trigger
-    const { error: updErr } = await supabase.from('users')
-      .update({ name: form.name, role_id: form.role_id || null })
-      .eq('id', authData.user.id);
-    if (updErr) { setError(updErr.message); setSaving(false); return; }
+    try {
+      const parts = form.name.trim().split(/\s+/);
+      if (parts.length < 2) throw new Error('Enter both first and last names.');
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { email: form.email.trim(), password: form.password, first_name: parts[0],
+          last_name: parts.slice(1).join(' '), role_id: form.role_id },
+      });
+      if (error) {
+        const response = await error.context?.json?.().catch(() => null);
+        throw new Error(response?.error || error.message);
+      }
+      if (data?.error) throw new Error(data.error);
+    } catch (error) { setError(error.message); setSaving(false); return; }
     setShowForm(false);
     setForm({ name:'', email:'', password:'', role_id:'' });
     await load();
@@ -55,7 +54,7 @@ export default function UsersPage() {
   };
 
   const handleRoleChange = async (userId, roleId) => {
-    const { error } = await supabase.from('users').update({ role_id: roleId }).eq('id', userId);
+    const { error } = await supabase.from('users').update({ role_id: roleId }).eq('id', userId).select('id').single();
     if (error) { setError(error.message); return; }
     setUsers(prev => prev.map(u => u.id === userId
       ? { ...u, role_id: roleId, role: roles.find(r => r.id === roleId) }
@@ -65,7 +64,7 @@ export default function UsersPage() {
 
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'N/A';
   const filtered = users.filter(u => !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()));
-  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-orange-400', SOC_ANALYST:'text-blue-400' };
+  const ROLE_COLORS = { ADMIN:'text-red-400', SOC_LEAD:'text-orange-400', SOC_ANALYST_L1:'text-gray-300', SOC_ANALYST_L2:'text-gray-300', SOC_ANALYST_L3:'text-gray-300' };
 
   return (
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
@@ -95,7 +94,7 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1">Password</label>
-              <input name="password" type="password" value={form.password} onChange={handle} required minLength={8} placeholder="Min 8 chars" className="input w-full" />
+              <input name="password" type="password" value={form.password} onChange={handle} required minLength={12} placeholder="Min 12 chars" className="input w-full" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1">Role</label>
@@ -120,7 +119,7 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800 bg-gray-800/50">

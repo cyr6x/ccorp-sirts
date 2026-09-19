@@ -32,7 +32,7 @@ export default function KnowledgeBaseArticlePage() {
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('kb_articles').update(form).eq('id', id);
+    const { error } = await supabase.from('kb_articles').update(form).eq('id', id).select('id').single();
     if (error) { setError(error.message); setSaving(false); return; }
     setArticle(prev => ({...prev, ...form}));
     setEditing(false);
@@ -41,7 +41,8 @@ export default function KnowledgeBaseArticlePage() {
 
   const handleDelete = async () => {
     if (!window.confirm('Delete this article? This cannot be undone.')) return;
-    await supabase.from('kb_articles').delete().eq('id', id);
+    const { error } = await supabase.from('kb_articles').delete().eq('id', id).select('id').single();
+    if (error) { setError(error.message); return; }
     navigate('/knowledge-base');
   };
 

@@ -1,188 +1,67 @@
-# CCorp SIRTS
+# CCorp SIRTS — morning recovery
 
-**Security Incident Response & Ticketing System** — final year project for BSc (Hons) Cybersecurity & Networking.
+Recovery branch: `rebuild/morning-sirts`.
+Reference snapshot: `7a8f7ccae4e21ec32937d56d734424ae2daf7a3f`.
+Original main: `09c4c7f51f308226258d1b716c40758750fb927e`, preserved by `backup/main-pre-morning-rebuild`.
 
-A full-stack SOC ticketing tool built on React + Supabase: report, triage, and resolve security incidents with role-based access control, a live operations dashboard, SLA tracking, knowledge base, asset inventory, and a full immutable audit log.
+This branch restores the morning React/Supabase modules and red/black neural visual system. No later hardening commits were merged or cherry-picked. Recovery-specific fixes are applied on top of that exact snapshot.
 
-Mapped to NIST SP 800-61 incident response lifecycle (Identify → Contain → Eradicate → Recover → Lessons Learned).
+**Not ready for production:** new Supabase project creation is blocked by the account's two-active-free-project quota. No fresh backend, staff accounts, remote migration, Edge Function deployment, or successful Vercel recovery preview exists yet. The existing projects and production environment have not been modified.
 
----
+## Local verification
 
-## Architecture
+From `client`, run `npm ci`, `npm test`, then `npm run build`.
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                         BROWSER                              │
-│     React 18 + Vite + Tailwind CSS + Recharts                │
-│                                                              │
-│  Login │ Dashboard │ Incidents │ Detail │ KB │ Assets │ Audit│
-└────────────────────────┬─────────────────────────────────────┘
-                         │ HTTPS + Supabase JWT (anon key)
-┌────────────────────────▼─────────────────────────────────────┐
-│                  SUPABASE (BaaS)                              │
-│                                                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │  Auth       │  │  PostgREST   │  │  Realtime          │  │
-│  │  (email +   │  │  (REST API   │  │  (WebSocket push   │  │
-│  │   password) │  │   over RLS)  │  │   on INSERT/UPDATE)│  │
-│  └─────────────┘  └──────────────┘  └────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │               PostgreSQL Database                      │  │
-│  │  users │ roles │ incidents │ comments │ audit_log      │  │
-│  │  incident_updates │ notifications │ kb_articles        │  │
-│  │  assets                                                │  │
-│  └────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
-```
+`npm test` executes the consolidated SQL against an embedded PostgreSQL (PGlite) fixture and exercises role policies through SQL. This is useful local verification, not a substitute for live Supabase Auth, REST, Realtime, Edge Functions, or browser UAT.
 
----
+`npm run dev` without backend variables shows a deliberate setup-pending screen. It makes no backend connection. Configure the variables in `client/.env.example` to use the fresh project. Hosted builds fail when variables are missing, mismatched, point at previous projects, or contain a secret instead of a publishable key.
 
-## Tech Stack
+## Fresh backend setup after quota is resolved
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 18, Vite, Tailwind CSS, React Router v6, Recharts |
-| **Backend / Auth** | Supabase (PostgREST + Auth + Realtime) |
-| **Database** | PostgreSQL (hosted on Supabase) |
-| **Auth** | Supabase Auth — email/password, JWT |
-| **Realtime** | Supabase Realtime — WebSocket subscriptions |
-| **Access Control** | Row Level Security (RLS) policies per role |
+1. Create `CCORP_SIRTS_REBUILD` in `Cyril556's Org` (`fxwbavdsmcwjhnzgyytl`), region `eu-central-2`. Do not restore a backup or copy data from any existing project.
+2. Record its project reference, URL and publishable key. Apply the single SQL file in `supabase/migrations` to this empty project. The old experimental migration chain was removed; it remains in Git history.
+3. Disable public sign-ups in the hosted Auth settings. The local `config.toml` does not automatically update hosted Auth settings. The profile trigger additionally requires trusted staff app metadata, so public signup cannot grant staff access even if accidentally enabled.
+4. Provision accounts through Auth Admin using `client/scripts/provision-staff.mjs`, described below. Never insert password hashes or change PostgreSQL roles for staff authentication.
+5. Deploy `supabase/functions/admin-create-user/index.ts` to the **new** project. Set function secret `SIRTS_PROJECT_REF` to the new reference. Gateway `verify_jwt` is false because the function verifies the actual bearer token via Auth, then checks the caller's current database role itself. No unauthenticated or non-admin call may provision accounts. The service/secret key stays inside the function.
+6. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_SUPABASE_PROJECT_REF` to Vercel **Preview scoped specifically to `rebuild/morning-sirts`**. Use these values locally for development. Leave shared preview defaults, other branches and production unchanged.
+7. Trigger a new preview, run the live gate in `docs/RECOVERY_STATUS.md`, and only merge after it passes.
 
----
+## First administrator and staff provisioning
 
-## Key Features
+Use a private JSON array outside the repository (or an ignored `*.private.json` file). Each element must contain `first_name`, `last_name`, `email`, `role_id`, and `password` (at least 12 characters). Use the real approved staff roster, including an ADMIN. There are no embedded passwords, canned accounts or imported UUIDs.
 
-- **Role-Based Access Control** — ADMIN, SOC_LEAD, SOC_ANALYST with RLS-enforced data scoping
-- **Incident Lifecycle** — Create, assign, update, escalate, resolve, close with full audit trail
-- **Live Dashboard** — Bar/pie charts (by day, category, severity), MTTR, KDPA deadline alerts
-- **SLA Tracking** — Per-severity targets (CRITICAL 4h, HIGH 8h, MEDIUM 24h, LOW 72h) with breach indicators
-- **Knowledge Base** — SOC playbooks and threat intel articles; create/edit for Lead/Admin
-- **Asset Inventory** — Register and track servers, workstations, network devices with risk levels
-- **Audit Logs** — Immutable paginated log of every action, gated by `audit_read` permission
-- **Reports & Analytics** — Filterable by date range; resolution rate, MTTR, by-category breakdown
-- **Realtime Updates** — Incident list and detail pages update live via Supabase WebSocket channels
-- **User Management** — Admin can add users and change roles in-app
+Supply the three `VITE_SUPABASE_*` values above, `SUPABASE_SECRET_KEY` (the fresh project's secret), and `SIRTS_STAFF_FILE` via a secure environment loader. Run from `client`:
 
----
-
-## Project Structure
-
-```
-ccorp-sirts/
-├── client/                      # React frontend (Vite)
-│   ├── .env                     # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (not committed)
-│   ├── .env.example             # Template
-│   └── src/
-│       ├── lib/
-│       │   └── supabaseClient.js    # Singleton Supabase client
-│       ├── context/
-│       │   └── AuthContext.jsx      # Session restore, onAuthStateChange, profile fetch
-│       ├── components/
-│       │   └── Navbar.jsx           # Role-gated nav links
-│       └── pages/
-│           ├── LoginPage.jsx
-│           ├── DashboardPage.jsx
-│           ├── IncidentsPage.jsx        # + Realtime INSERT/UPDATE
-│           ├── IncidentDetailPage.jsx   # + Realtime comments + status push
-│           ├── NewIncidentPage.jsx
-│           ├── UsersPage.jsx
-│           ├── ReportsPage.jsx
-│           ├── KnowledgeBasePage.jsx
-│           ├── KnowledgeBaseArticlePage.jsx
-│           ├── AssetsPage.jsx
-│           └── AuditLogsPage.jsx
-└── supabase/
-    └── migrations/
-        ├── 20260917160000_chunk0_schema.sql   # Table renames, status enum, RLS policies, triggers
-        └── 20260917160100_chunk1_new_tables.sql # Auth trigger, kb_articles, assets, policy fixes
+```sh
+node scripts/provision-staff.mjs
 ```
 
----
+The script uses Auth Admin `createUser`, relies on the transactionally created profile, verifies a real password login and role, and signs out. On retries it does not overwrite existing accounts or reset passwords. It stops on a mismatch. Do not pass secrets as command-line arguments or commit the roster.
 
-## Getting Started
+After the first administrator is provisioned, the Users page uses the authenticated admin Edge Function, so adding another user does not replace the administrator's session.
 
-### 1. Clone
+## Role policy in this recovery
 
-```bash
-git clone https://github.com/baaya/ccorp-sirts.git
-cd ccorp-sirts
-```
+| Role | Incident visibility | Workflow privileges | Other modules |
+|---|---|---|---|
+| ADMIN | All | Assign, triage, resolve, close, reopen; delete | Users, KB/assets management, reports, audit |
+| SOC_LEAD | All | Assign, triage, resolve, close, reopen | KB/assets management, reports, audit |
+| SOC_ANALYST_L1 | Created by or assigned to self | Create, comment, triage | Read KB/assets |
+| SOC_ANALYST_L2 | Created by or assigned to self | L1 plus resolve | Read KB/assets |
+| SOC_ANALYST_L3 | Created by or assigned to self | L2 plus close | Read KB/assets |
 
-### 2. Install frontend dependencies
+Valid status transitions: New → Assigned or In Progress; Assigned → In Progress; In Progress → Resolved; Resolved → Closed or In Progress; Closed → In Progress (management only). Setting Assigned requires an assignee. The UI and SQL use the same tier restrictions. This is the proposed recovery policy and still requires live acceptance testing.
 
-```bash
-cd client && npm install
-```
+Incident creation/update audit records and status/assignment/severity history are written atomically by database triggers. Browsers cannot forge those records. Operational tables start empty by design; no old or fabricated incidents/assets/knowledge articles are imported.
 
-### 3. Configure environment
+## Recovery fixes
 
-```bash
-# client/.env  (never commit — already in .gitignore)
-VITE_SUPABASE_URL=https://<your-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-public-key>
-```
+- Removed old-project defaults and shared demo passwords; isolated session storage by project.
+- Moved staff profile queries out of the Auth callback to avoid Auth lock contention; profile failures are visible instead of silently becoming a generic analyst role.
+- Replaced browser sign-up with a server-authorized staff creation function.
+- Added all five roles, RLS, explicit grants, foreign-key indexes, Auth/profile trigger and Realtime publication.
+- Added responsive hamburger navigation, URL-backed incident quick search, and management assignment controls.
+- Added tier-aware status transitions and server-owned resolution timestamps.
+- Fixed optional empty asset IP values, false-success mutations, hidden dashboard errors, and charts incorrectly calculated from only eight recent rows. Dashboard charts cover the last seven days; API pagination limits remain a live UAT item for large datasets.
 
-Both values are in your Supabase dashboard → Settings → API.
-
-### 4. Run migrations
-
-In the Supabase SQL editor, run (in order):
-
-1. `supabase/migrations/20260917160000_chunk0_schema.sql`
-2. `supabase/migrations/20260917160100_chunk1_new_tables.sql`
-
-Or via the Supabase CLI:
-
-```bash
-supabase db push
-```
-
-### 5. Create users
-
-In Supabase dashboard → Authentication → Users, create at least one user.
-The trigger in chunk1 automatically creates their `public.users` row.
-Update their `role_id` to `ADMIN` in the Table Editor to get full access.
-
-### 6. Run the dev server
-
-```bash
-cd client && npm run dev
-```
-
-Open http://localhost:3000
-
----
-
-## Roles
-
-| Role | Access |
-|---|---|
-| `ADMIN` | Full access to all modules including Users, Audit Logs, Reports |
-| `SOC_LEAD` | All incident ops + Audit Logs + Reports; no user management |
-| `SOC_ANALYST` | Create incidents; view/update only incidents assigned to them (enforced by RLS) |
-
----
-
-## SLA Targets
-
-| Severity | Target | Colour |
-|---|---|---|
-| CRITICAL | 4 hours | Red |
-| HIGH | 8 hours | Orange |
-| MEDIUM | 24 hours | Yellow |
-| LOW | 72 hours | Green |
-
-SLA breach indicators appear on the incident list and detail pages.
-
----
-
-## What this demonstrates
-
-Final year project for BSc (Hons) Cybersecurity and Networking. Combines incident response process (NIST SP 800-61) with secure full-stack development: Supabase Auth JWT sessions, Row Level Security enforcing role-based data access at the database layer, realtime WebSocket subscriptions, and a complete CRUD lifecycle across 8 modules — all without a custom backend server.
-
----
-
-## License
-
-MIT — academic use permitted with attribution.
+The legacy `server` directory is historical and is not used by this Vite/Supabase deployment.

@@ -32,21 +32,26 @@ export default function DashboardPage() {
   const [recent,  setRecent]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
 
-      const [openRes, critRes, weekRes, resolvedRes, allRes, notifRes] = await Promise.all([
+      const [openRes, critRes, weekRes, resolvedRes, allRes, notifRes, chartRes] = await Promise.all([
         supabase.from('incidents').select('*', { count:'exact', head:true }).not('status', 'in', '("Resolved","Closed")'),
         supabase.from('incidents').select('*', { count:'exact', head:true }).eq('severity','CRITICAL'),
         supabase.from('incidents').select('*', { count:'exact', head:true }).gte('created_at', weekAgo),
         supabase.from('incidents').select('created_at, resolved_at').not('resolved_at','is',null),
         supabase.from('incidents').select('id, title, severity, status, category, created_at, affected_asset, assigned_to_user:users!incidents_assigned_to_fkey(name)').order('created_at',{ascending:false}).limit(8),
         supabase.from('notifications').select('*').lt('deadline_at', new Date(Date.now()+12*60*60*1000).toISOString()).eq('notified',false),
+        supabase.from('incidents').select('category, created_at').gte('created_at', weekAgo),
       ]);
 
+      const failure = [openRes, critRes, weekRes, resolvedRes, allRes, notifRes, chartRes].find(result => result.error);
+      if (failure) { setError(failure.error.message); setLoading(false); return; }
+      setError('');
       // MTTR
       let mttr = null;
       if (resolvedRes.data?.length) {
@@ -59,18 +64,18 @@ export default function DashboardPage() {
       setAlerts(notifRes.data||[]);
 
       // By-category aggregation
-      if (allRes.data) {
-        const byCat = allRes.data.reduce((acc,i) => { acc[i.category]=(acc[i.category]||0)+1; return acc; },{});
+      if (chartRes.data) {
+        const byCat = chartRes.data.reduce((acc,i) => { acc[i.category]=(acc[i.category]||0)+1; return acc; },{});
         setCatData(Object.entries(byCat).map(([name,value])=>({ name:name.replace(/_/g,' '), value })));
       }
 
       // By-day last 7
-      if (allRes.data) {
+      if (chartRes.data) {
         const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const now=Date.now();
         const bd = Array.from({length:7},(_,k)=>{
           const d=new Date(now-(6-k)*86400000);
-          const count=allRes.data.filter(i=>new Date(i.created_at).toDateString()===d.toDateString()).length;
+          const count=chartRes.data.filter(i=>new Date(i.created_at).toDateString()===d.toDateString()).length;
           return { day:days[d.getDay()], count };
         });
         setDayData(bd);
@@ -89,9 +94,10 @@ export default function DashboardPage() {
           <p className="text-gray-500 text-sm mt-1">Welcome back, {currentUser?.name} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
 
+        {error && <p role="alert" className="mb-6 p-4 border border-red-700 rounded-lg text-red-300">Dashboard unavailable: {error}</p>}
         {alerts.length > 0 && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-xl">
-            <p className="text-sm font-semibold text-red-400 mb-2">KDPA Deadline Alert &mdash; {alerts.length} incident{alerts.length>1?'s':''} nearing 72h notification deadline</p>
+            <p className="text-sm font-semibold text-red-400 mb-2">Deadline Alert &mdash; {alerts.length} incident{alerts.length>1?'s':''} with pending notification deadlines</p>
             <div className="space-y-1">
               {alerts.map(a => (
                 <p key={a.id} className="text-xs text-red-300">Incident ID: {a.incident_id} &mdash; Deadline: {new Date(a.deadline_at).toLocaleString('en-GB')}</p>
@@ -102,7 +108,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
-        ) : (
+        ) : error ? null : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <StatCard label="Open Incidents"  value={stats.open}     sub="Require attention"       icon="\uD83D\uDEA8" accent="red" />
@@ -124,7 +130,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <h3 className="text-sm font-semibold text-gray-300 mb-4">By Category</h3>
+                <h3 className="text-sm font-semibold text-gray-300 mb-4">By Category · Last 7 Days</h3>
                 {catData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>

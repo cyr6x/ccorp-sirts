@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
@@ -29,7 +29,13 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
-  const [search,    setSearch]    = useState('');
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') || '';
+  const setSearch = value => setParams(prev => {
+    const next = new URLSearchParams(prev);
+    if (value) next.set('q', value); else next.delete('q');
+    return next;
+  }, { replace: true });
   const [severity,  setSeverity]  = useState('');
   const [status,    setStatus]    = useState('');
   const [category,  setCategory]  = useState('');
@@ -41,7 +47,7 @@ export default function IncidentsPage() {
       .select('*, assigned_to_user:users!incidents_assigned_to_fkey(name), created_by_user:users!incidents_created_by_fkey(name)')
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
-    else setIncidents(data || []);
+    else { setError(''); setIncidents(data || []); }
   };
 
   useEffect(() => {
@@ -60,11 +66,7 @@ export default function IncidentsPage() {
       )
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'incidents' },
-        (payload) => {
-          setIncidents(prev =>
-            prev.map(i => i.id === payload.new.id ? { ...i, ...payload.new } : i)
-          );
-        }
+        () => fetchAll()
       )
       .subscribe();
 
@@ -80,7 +82,7 @@ export default function IncidentsPage() {
   const filtered = incidents.filter(i => {
     const q = search.toLowerCase();
     return (
-      (!q || i.title?.toLowerCase().includes(q) || i.affected_asset?.toLowerCase().includes(q) || i.source_ip?.includes(q))
+      (!q || i.id?.toLowerCase().includes(q) || i.title?.toLowerCase().includes(q) || i.affected_asset?.toLowerCase().includes(q) || i.source_ip?.includes(q))
       && (!severity || i.severity === severity)
       && (!status   || i.status   === status)
       && (!category || i.category === category)
