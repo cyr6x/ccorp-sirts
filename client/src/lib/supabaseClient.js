@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const DEFAULT_DEV_SUPABASE_URL = 'https://oslthmbnukpkywapdkje.supabase.co';
-const DEFAULT_DEV_PUBLISHABLE_KEY = 'sb_publishable_YRpCIiZ20GW5e5PMcT6SZg_D6GZNoJU';
+const DEFAULT_DEV_SUPABASE_URL = 'https://pvtissqcpskpxlduxuta.supabase.co';
+const DEFAULT_DEV_PUBLISHABLE_KEY = 'sb_publishable_t1n4jLjtt_eSWDtQj7vCaw_Q2wY6DzY';
 
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
