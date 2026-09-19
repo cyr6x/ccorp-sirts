@@ -25,6 +25,17 @@ jobs:
       - name: Dependency audit diagnostic
         run: npm audit --audit-level=high || true
 
+      - name: Prepare accepted UAT auth addresses
+        run: |
+          sed -i 's#sarah@ccorp.example.com#sarah.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#cyril@ccorp.example.com#cyril.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#allan@ccorp.example.com#allan.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#tony@ccorp.example.com#tony.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#david@ccorp.example.com#david.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#ellen@ccorp.example.com#ellen.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#lisa@ccorp.example.com#lisa.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+          sed -i 's#mike@ccorp.example.com#michael.sirts.260919.f7a9@gmail.com#g' scripts/bootstrap-fresh.mjs
+
       - name: Bootstrap real Auth users and exercise BaaS
         run: node scripts/bootstrap-fresh.mjs
 
