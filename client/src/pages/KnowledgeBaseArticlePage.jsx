@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { hasCapability } from '../lib/rbac.js';
 
 export default function KnowledgeBaseArticlePage() {
   const { id } = useParams();
@@ -14,7 +15,7 @@ export default function KnowledgeBaseArticlePage() {
   const [form,    setForm]    = useState({ title:'', summary:'', content:'', category:'' });
   const [saving,  setSaving]  = useState(false);
 
-  const canEdit = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
+  const canEdit = hasCapability(currentUser?.role, 'kb.manage');
 
   useEffect(() => {
     (async () => {
