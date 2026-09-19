@@ -153,11 +153,13 @@ export default function UsersPage() {
                 onChange={handle}
                 required
                 minLength={12}
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{12,}"
+                title="Use at least 12 characters with upper, lower, number, and symbol"
                 autoComplete="new-password"
                 placeholder="Minimum 12 characters"
                 className="input"
               />
-              <p className="text-[11px] text-zinc-600 mt-1">Use a unique temporary password and rotate it after first use.</p>
+              <p className="text-[11px] text-zinc-600 mt-1">Minimum 12 characters with upper, lower, number, and symbol. Rotate after first use.</p>
             </div>
             <div>
               <label htmlFor="staff-role" className="field-label">Role</label>

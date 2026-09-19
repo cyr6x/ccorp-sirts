@@ -28,6 +28,7 @@ test('analyst tiers expose progressively broader workflows', () => {
   assert.equal(hasCapability(ROLES.SOC_ANALYST_L1, 'incidents.claim'), true);
   assert.equal(hasCapability(ROLES.SOC_ANALYST_L1, 'incidents.resolve'), false);
 
+  assert.equal(hasCapability(ROLES.SOC_ANALYST_L2, 'incidents.view_all'), true);
   assert.equal(hasCapability(ROLES.SOC_ANALYST_L2, 'incidents.escalate'), true);
   assert.equal(hasCapability(ROLES.SOC_ANALYST_L2, 'incidents.resolve'), true);
 

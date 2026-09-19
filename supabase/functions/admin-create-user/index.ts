@@ -15,6 +15,9 @@ const allowedRoles = new Set([
   "SOC_ANALYST_L3",
 ]);
 
+const staffEmailPattern = /^[A-Z0-9._%+-]+@ccorp\.local$/i;
+const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$/;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -76,9 +79,18 @@ Deno.serve(async (req: Request) => {
     const password = String(body?.password ?? "");
     const roleId = String(body?.role_id ?? "");
 
-    if (!name || !email || password.length < 12 || !allowedRoles.has(roleId)) {
+    if (!name || !staffEmailPattern.test(email) || !allowedRoles.has(roleId)) {
       return new Response(JSON.stringify({
-        error: "Name, valid email, role, and a password of at least 12 characters are required",
+        error: "A valid CCorp staff email, name, and role are required",
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!strongPasswordPattern.test(password)) {
+      return new Response(JSON.stringify({
+        error: "Temporary password must be at least 12 characters and include upper, lower, number, and symbol",
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

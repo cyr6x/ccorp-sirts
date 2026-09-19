@@ -95,3 +95,27 @@ test('unsupported Tailwind opacity shorthands are not used on critical UI', asyn
     assert.doesNotMatch(source, /(?:bg|border|text)-[a-z]+-\d+\/8\b/);
   }
 });
+
+
+test('final database migration enforces analyst workflow server-side', async () => {
+  const migration = await read('../supabase/migrations/20260919110000_enforce_tiered_incident_workflow.sql');
+  assert.match(migration, /enforce_incident_workflow/);
+  assert.match(migration, /L1 analysts cannot resolve or close incidents/);
+  assert.match(migration, /L2 escalation target must be L3 or SOC Lead/);
+  assert.match(migration, /L3 analysts may assign only to analyst tiers/);
+  assert.match(migration, /revoke insert, update, delete on public\.incident_updates from authenticated/);
+});
+
+test('staff provisioning enforces the CCorp domain and strong temporary passwords', async () => {
+  const fn = await read('../supabase/functions/admin-create-user/index.ts');
+  assert.match(fn, /@ccorp\\\.local/);
+  assert.match(fn, /strongPasswordPattern/);
+  assert.match(fn, /Administrator access required/);
+  assert.match(fn, /USER_CREATED/);
+});
+
+test('admin staff form mirrors server password policy', async () => {
+  const users = await read('src/pages/UsersPage.jsx');
+  assert.match(users, /pattern="/);
+  assert.match(users, /upper, lower, number, and symbol/);
+});

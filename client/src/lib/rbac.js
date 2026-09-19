@@ -31,7 +31,7 @@ const CAPABILITIES = Object.freeze({
     'incidents.resolve', 'comments.write', 'kb.manage', 'assets.manage',
   ]),
   SOC_ANALYST_L2: new Set([
-    'incidents.create', 'incidents.claim', 'incidents.escalate',
+    'incidents.view_all', 'incidents.create', 'incidents.claim', 'incidents.escalate',
     'incidents.resolve', 'comments.write',
   ]),
   SOC_ANALYST_L1: new Set([
