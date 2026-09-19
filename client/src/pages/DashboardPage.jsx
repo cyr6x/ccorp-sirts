@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import { formatPersonName } from '../lib/userDisplay.js';
 
 const CAT_COLORS = ['#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
 const SEV_MAP    = { CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' };
@@ -32,10 +33,12 @@ export default function DashboardPage() {
   const [recent,  setRecent]  = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError('');
       const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
 
       const [openRes, critRes, weekRes, resolvedRes, allRes, notifRes] = await Promise.all([
@@ -46,6 +49,14 @@ export default function DashboardPage() {
         supabase.from('incidents').select('id, title, severity, status, category, created_at, affected_asset, assigned_to_user:users!incidents_assigned_to_fkey(name)').order('created_at',{ascending:false}).limit(8),
         supabase.from('notifications').select('*').lt('deadline_at', new Date(Date.now()+12*60*60*1000).toISOString()).eq('notified',false),
       ]);
+
+      const failures = [openRes, critRes, weekRes, resolvedRes, allRes, notifRes]
+        .filter(result => result?.error)
+        .map(result => result.error.message);
+
+      if (failures.length) {
+        setError('Some dashboard data could not be loaded. The workspace remains available while the development database is being isolated.');
+      }
 
       // MTTR
       let mttr = null;
@@ -85,9 +96,18 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-950 p-6 fade-in">
       <div className="max-w-screen-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Security Operations <span className="text-blue-400">Dashboard</span></h1>
-          <p className="text-gray-500 text-sm mt-1">Welcome back, {currentUser?.name} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-2xl font-semibold tracking-[0.12em] text-white">SIRTS</h1>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-red-400">Overview</span>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">Welcome back, {formatPersonName(currentUser?.name)} &bull; {new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+            <p className="text-sm font-medium text-amber-200">{error}</p>
+          </div>
+        )}
 
         {alerts.length > 0 && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-xl">
