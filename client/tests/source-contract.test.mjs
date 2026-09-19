@@ -119,3 +119,22 @@ test('admin staff form mirrors server password policy', async () => {
   assert.match(users, /pattern="/);
   assert.match(users, /upper, lower, number, and symbol/);
 });
+
+
+test('reindex migration covers foreign keys and caches auth uid lookups', async () => {
+  const migration = await read('../supabase/migrations/20260919111000_reindex_rls_performance.sql');
+  for (const index of [
+    'audit_log_user_id_idx',
+    'comments_user_id_idx',
+    'incident_updates_changed_by_idx',
+    'incidents_created_by_idx',
+    'kb_articles_author_id_idx',
+    'notifications_incident_id_idx',
+    'users_role_id_idx',
+  ]) {
+    assert.match(migration, new RegExp(index));
+  }
+  assert.match(migration, /\(select auth\.uid\(\)\)/);
+  assert.match(migration, /create policy kb_insert_senior/);
+  assert.match(migration, /create policy assets_update_senior/);
+});
