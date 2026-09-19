@@ -52,6 +52,6 @@ test('development branch is pinned to the fresh isolated Supabase project', asyn
   const client = await read('src/lib/supabaseClient.js');
   assert.match(client, /pvtissqcpskpxlduxuta\.supabase\.co/);
   assert.doesNotMatch(client, /tvjyllnfuptdcbirjvev\.supabase\.co/);
-  assert.doesNotMatch(client, /pvtissqcpskpxlduxuta\.supabase\.co/);
+  assert.doesNotMatch(client, /oslthmbnukpkywapdkje\.supabase\.co/);
   assert.match(client, /supabaseConfigured/);
 });
