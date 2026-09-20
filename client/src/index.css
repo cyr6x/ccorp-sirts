@@ -233,23 +233,8 @@
   padding: 2rem 1rem;
 }
 .login-layout {
-  width: min(1120px, 100%);
+  width: min(448px, 100%);
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
-  gap: 5rem;
-  align-items: center;
-}
-.login-hero-title {
-  font-size: clamp(2.7rem, 6vw, 5.7rem);
-  line-height: .92;
-  letter-spacing: -.055em;
-  font-weight: 780;
-}
-.login-hero-rule {
-  width: 88px;
-  height: 3px;
-  background: linear-gradient(90deg, #ef1b24, transparent);
 }
 .login-card {
   border-radius: 18px;
@@ -289,9 +274,6 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 @media (max-width: 900px) {
-  .login-layout { grid-template-columns: 1fr; gap: 2rem; max-width: 560px; }
-  .login-hero { text-align: center; }
-  .login-hero-rule { margin-inline: auto; }
   .neural-svg { width: 145%; left: -22%; }
 }
 

@@ -27,49 +27,12 @@ export default function LoginPage() {
   return (
     <main className="login-shell">
       <div className="login-layout">
-        <section className="login-hero">
-          <div className="signal-label mb-5">
-            <span className="signal-dot" />
-            Security operations platform
-          </div>
-          <div className="login-hero-rule mb-7" />
-          <h1 className="login-hero-title text-white">
-            Detect.<br />
-            Respond.<br />
-            <span className="text-red-500">Stay ahead.</span>
-          </h1>
-          <p className="mt-7 max-w-xl text-base sm:text-lg leading-relaxed text-gray-400">
-            CCorp SIRTS unifies incident triage, response workflows, asset context,
-            knowledge and audit evidence in one live SOC workspace.
-          </p>
-          <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg">
-            {[
-              ['LIVE', 'Incident feed'],
-              ['RBAC', 'Controlled access'],
-              ['AUDIT', 'Evidence trail'],
-            ].map(([eyebrow, label]) => (
-              <div key={eyebrow} className="border-l border-red-500/40 pl-3 py-1">
-                <p className="text-[10px] tracking-[0.2em] text-red-400 font-semibold">{eyebrow}</p>
-                <p className="text-xs sm:text-sm text-gray-400 mt-1">{label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="w-full max-w-md justify-self-end">
+        <section className="w-full max-w-md">
           <div className="login-card p-7 sm:p-8">
-            <div className="flex items-start justify-between gap-5 mb-8">
-              <div>
-                <p className="signal-label mb-2"><span className="signal-dot" />Secure access</p>
-                <h2 className="text-2xl font-semibold tracking-tight text-white">CCorp SIRTS</h2>
-                <p className="text-sm text-gray-500 mt-1">Security Incident Response &amp; Ticketing System</p>
-              </div>
-              <div className="enterprise-brandmark w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 4.6-2.8 8.7-7 10-4.2-1.3-7-5.4-7-10V6l7-3z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 12.2l2.2 2.2 4.8-5" />
-                </svg>
-              </div>
+            <div className="mb-8">
+              <p className="signal-label mb-2"><span className="signal-dot" />Secure access</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">CCorp SIRTS</h1>
+              <p className="text-sm text-gray-500 mt-1">Security Incident Response &amp; Ticketing System</p>
             </div>
 
             {(error || authError) && (
