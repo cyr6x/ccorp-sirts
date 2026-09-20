@@ -47,6 +47,18 @@ The script uses Auth Admin `createUser`; the database trigger creates a locked p
 
 After the first administrator is provisioned, the Users page uses the authenticated admin Edge Function, so adding another user does not replace the administrator's session.
 
+## Fictional demonstration data
+
+The rebuild includes a preview-only, idempotent seed for six fictional SOC users plus interconnected incidents, assignments, assets, comments, knowledge articles, SLA notifications and audit activity. Reports are populated indirectly from the incident history because SIRTS has no reports table. Business departments are represented through the existing asset owner and incident context fields; the user schema is not expanded.
+
+The seed is locked to `CCORP_SIRTS_REBUILD` and refuses every other project. It does not target Sarah or Cyril, reset any password, update pre-existing operational rows or change RLS. It uses deterministic IDs, skips verified matching records on repeat runs and stops on a collision. Keep all required values in an ignored environment file or secure environment loader, then run from `client`:
+
+```sh
+npm run seed:demo
+```
+
+Required values are documented in `client/.env.example`. The command creates users through Auth Admin, verifies every non-demo profile stayed unchanged, and signs in as every fictional role to check incident visibility, knowledge/assets access and audit restrictions. Do not run this seed against production.
+
 ## Role policy in this recovery
 
 | Role | Incident visibility | Workflow privileges | Other modules |
