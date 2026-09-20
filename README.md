@@ -57,7 +57,7 @@ The seed is locked to `CCORP_SIRTS_REBUILD` and refuses every other project. It 
 npm run seed:demo
 ```
 
-Required values are documented in `client/.env.example`. The command creates users through Auth Admin, verifies every non-demo profile stayed unchanged, and signs in as every fictional role to check incident visibility, knowledge/assets access and audit restrictions. Do not run this seed against production.
+Required values are documented in `client/.env.example`. Copy them into an ignored `client/.env` file; `npm run seed:demo` loads that file explicitly. The command creates users through Auth Admin, verifies every non-demo profile stayed unchanged, and signs in as every fictional role to check incident visibility, knowledge/assets access and audit restrictions. Do not run this seed against production.
 
 ## Role policy in this recovery
 
