@@ -119,7 +119,7 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
         assert((await as(i,'select * from public.assets')).rows.length>0);
       }
     });
-    await t.test('live asset links, KB traceability, comment auditing, and SLA deadlines stay authorized', async () => {
+    await t.test('live asset links, KB traceability, comment auditing, and deadline trackers stay authorized', async () => {
       const assetId = (await as(0, 'select id from public.assets order by created_at limit 1')).rows[0].id;
       await as(2, 'insert into public.incident_assets(incident_id,asset_id,added_by) values($1,$2,$3)', [incidentIds[2], assetId, ids[2]]);
       assert.equal((await as(2, 'select asset_id from public.incident_assets where incident_id=$1', [incidentIds[2]])).rows[0].asset_id, assetId);
@@ -140,10 +140,47 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
       const commentAudit = await as(0, "select id from public.audit_log where incident_id=$1 and action='COMMENT_ADDED'", [incidentIds[2]]);
       assert(commentAudit.rows.length > 0);
 
-      await as(0, "update public.incidents set severity='CRITICAL' where id=$1", [incidentIds[0]]);
-      const deadline = (await as(0, "select type,deadline_at from public.notifications where incident_id=$1 and type='SLA_DEADLINE'", [incidentIds[0]])).rows[0];
-      assert.equal(deadline.type, 'SLA_DEADLINE');
-      assert(deadline.deadline_at);
+      const activeIncident = (await as(0, "insert into public.incidents(title,severity,created_by) values('Deadline tracker','CRITICAL',$1) returning id", [ids[0]])).rows[0].id;
+      const initialTrackers = await as(0, "select type,state,deadline_at from public.notifications where incident_id=$1 order by type", [activeIncident]);
+      assert.deepEqual(initialTrackers.rows.map(row => row.type), ['KDPA_NOTIFICATION','SLA_DEADLINE']);
+      assert(initialTrackers.rows.every(row => row.state === 'PENDING' && row.deadline_at));
+
+      await as(0, "update public.incidents set status='In Progress' where id=$1", [activeIncident]);
+      await as(0, "update public.incidents set status='Resolved' where id=$1", [activeIncident]);
+      const cancelledTrackers = await as(0, "select state from public.notifications where incident_id=$1", [activeIncident]);
+      assert(cancelledTrackers.rows.every(row => row.state === 'CANCELLED'));
+
+      await as(0, "update public.incidents set status='In Progress' where id=$1", [activeIncident]);
+      const reopenedTrackers = await as(0, "select type,state from public.notifications where incident_id=$1 order by type", [activeIncident]);
+      assert.deepEqual(reopenedTrackers.rows, [
+        { type:'KDPA_NOTIFICATION', state:'PENDING' },
+        { type:'SLA_DEADLINE', state:'PENDING' },
+      ]);
+    });
+    await t.test('role, asset, KB, link, and deletion activity is audited', async () => {
+      const assetId = (await as(0, "insert into public.assets(name) values('Audited asset') returning id")).rows[0].id;
+      const articleId = (await as(0, "insert into public.kb_articles(title,content) values('Audited article','Audited content') returning id")).rows[0].id;
+      await as(0, 'delete from public.assets where id=$1', [assetId]);
+      await as(0, 'delete from public.kb_articles where id=$1', [articleId]);
+      await as(0, 'update public.users set role_id=$1 where id=$2', ['SOC_ANALYST_L2', ids[4]]);
+
+      const actions = (await as(0, "select action,details from public.audit_log where action in ('ASSET_CREATED','ASSET_DELETED','KB_ARTICLE_CREATED','KB_ARTICLE_DELETED','USER_ROLE_CHANGED','INCIDENT_ASSET_LINKED') order by created_at")).rows;
+      for (const action of ['ASSET_CREATED','ASSET_DELETED','KB_ARTICLE_CREATED','KB_ARTICLE_DELETED','USER_ROLE_CHANGED']) {
+        const entry = actions.find(row => row.action === action && JSON.parse(row.details).actor_role === 'ADMIN');
+        assert(entry, `${action} is recorded`);
+      }
+      assert(actions.some(row => row.action === 'INCIDENT_ASSET_LINKED' && JSON.parse(row.details).actor_role === 'SOC_ANALYST_L1'));
+
+      const deletableIncident = (await as(0, "insert into public.incidents(title,created_by) values('Maintenance deletion',$1) returning id", [ids[0]])).rows[0].id;
+      await assert.rejects(as(0, 'delete from public.incidents where id=$1', [deletableIncident]), /permission denied/);
+      await db.exec('set role service_role');
+      try {
+        await db.query('delete from public.incidents where id=$1', [deletableIncident]);
+      } finally {
+        await db.exec('reset role');
+      }
+      const deletionAudit = await as(0, "select details from public.audit_log where action='INCIDENT_DELETED' order by created_at desc limit 1");
+      assert.equal(JSON.parse(deletionAudit.rows[0].details).incident_id, deletableIncident);
     });
   } finally { await db.close(); }
 });

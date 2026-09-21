@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient.js';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import Papa from 'papaparse';
 import { abbreviatedName } from '../lib/formatters.js';
+import { buildIncidentCsv } from '../lib/reportExport.js';
+import { createRequestGate, reportFilterKey } from '../lib/reportRequestState.js';
 
 const RANGES = [{ label:'Last 7 days', value:'7' }, { label:'Last 30 days', value:'30' }, { label:'Last 90 days', value:'90' }, { label:'All time', value:'all' }];
 const SEV_COLORS = { CRITICAL:'#ef1b24', HIGH:'#c8141c', MEDIUM:'#73737b', LOW:'#b9b9be' };
@@ -28,6 +29,9 @@ export default function ReportsPage() {
   const [status,    setStatus]    = useState('');
   const [severity,  setSeverity]  = useState('');
   const [assignee,  setAssignee]  = useState('');
+  const [loadedFilterKey, setLoadedFilterKey] = useState('');
+  const requestGate = useRef(createRequestGate());
+  const filterKey = reportFilterKey({ range, status, severity, assignee });
 
   useEffect(() => {
     supabase.from('users').select('id, name').order('name').then(({ data, error }) => {
@@ -38,7 +42,11 @@ export default function ReportsPage() {
 
   useEffect(() => {
     (async () => {
+      const requestId = requestGate.current.begin();
       setLoading(true);
+      setError('');
+      setIncidents([]);
+      setLoadedFilterKey('');
       let query = supabase.from('incidents').select('*, assigned_to_user:users!incidents_assigned_to_fkey(name)').order('created_at', { ascending: false });
       if (range !== 'all') {
         const since = new Date(Date.now() - parseInt(range) * 86400000).toISOString();
@@ -49,11 +57,18 @@ export default function ReportsPage() {
       if (assignee === 'unassigned') query = query.is('assigned_to', null);
       else if (assignee) query = query.eq('assigned_to', assignee);
       const { data, error } = await query;
-      if (error) setError(error.message);
-      else { setError(''); setIncidents(data || []); }
+      if (!requestGate.current.isCurrent(requestId)) return;
+      if (error) {
+        setError(error.message);
+        setIncidents([]);
+        setLoadedFilterKey('');
+      } else {
+        setIncidents(data || []);
+        setLoadedFilterKey(filterKey);
+      }
       setLoading(false);
     })();
-  }, [range, status, severity, assignee]);
+  }, [range, status, severity, assignee, filterKey]);
 
   const agg = (field) => incidents.reduce((acc, i) => {
     const k = i[field] || 'Unknown';
@@ -94,14 +109,11 @@ export default function ReportsPage() {
     return i.status !== 'Resolved' && i.status !== 'Closed' && t && ((Date.now() - new Date(i.created_at)) / 3600000) > t;
   }).length;
 
+  const exportReady = !loading && !error && incidents.length > 0 && loadedFilterKey === filterKey;
+
   const exportCsv = () => {
-    const headings = ['Incident ID','Title','Category','Severity','Status','Assignee','Source IP','Affected Asset','Created','Resolved'];
-    const rows = incidents.map(incident => [
-      incident.id, incident.title, incident.category, incident.severity, incident.status,
-      incident.assigned_to_user?.name || 'Unassigned', incident.source_ip, incident.affected_asset,
-      incident.created_at, incident.resolved_at,
-    ]);
-    const csv = Papa.unparse({ fields: headings, data: rows });
+    if (!exportReady) return;
+    const csv = buildIncidentCsv(incidents);
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
@@ -118,7 +130,7 @@ export default function ReportsPage() {
             <h1 className="text-2xl font-bold text-white">Reports <span className="text-red-400">&amp; Analytics</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">Incident metrics for the selected period</p>
           </div>
-          <button type="button" onClick={exportCsv} disabled={loading || incidents.length === 0} className="btn-primary disabled:opacity-50">Export CSV</button>
+          <button type="button" onClick={exportCsv} disabled={!exportReady} className="btn-primary disabled:opacity-50">Export CSV</button>
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

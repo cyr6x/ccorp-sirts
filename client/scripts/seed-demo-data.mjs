@@ -146,11 +146,5 @@ inserted.incident_updates = await ensureRows('incident_updates',data.incident_up
 inserted.audit_log = await ensureRows('audit_log',data.audit_log);
 inserted.kb_articles = await ensureRows('kb_articles',data.kb_articles);
 
-const terminalHighSeverity = data.incidents.filter(row => ['Resolved','Closed'].includes(row.status) && ['HIGH','CRITICAL'].includes(row.severity)).map(row => row.id);
-if (terminalHighSeverity.length) {
-  const result = await admin.from('notifications').update({ notified:true }).in('incident_id',terminalHighSeverity).eq('type','SLA_DEADLINE').eq('notified',false);
-  if (result.error) fail('Terminal demonstration notification update failed', result.error);
-}
-
 await verifyRoleJourneys(data);
 console.log(JSON.stringify({ result:'PASS', users:DEMO_USERS.length, totals:Object.fromEntries(Object.entries(data).map(([name,rows]) => [name,rows.length])), inserted }));

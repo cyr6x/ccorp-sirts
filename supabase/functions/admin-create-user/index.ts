@@ -41,6 +41,22 @@ Deno.serve(async (req) => {
       await admin.auth.admin.deleteUser(data.user.id);
       return reply(500, { error: 'The staff profile could not be activated.' });
     }
+    const audit = await admin.from('audit_log').insert({
+      user_id: identity.user.id,
+      action: 'USER_PROVISIONED',
+      details: JSON.stringify({
+        actor_id: identity.user.id,
+        actor_role: actor.role_id,
+        subject_user_id: data.user.id,
+        subject_email: data.user.email,
+        assigned_role: role_id,
+      }),
+    });
+    if (audit.error) {
+      await admin.from('users').update({ role_id: null }).eq('id', data.user.id);
+      await admin.auth.admin.deleteUser(data.user.id);
+      return reply(500, { error: 'The staff account could not be recorded in the audit trail.' });
+    }
     return reply(201, { id: data.user.id });
   } catch {
     return reply(400, { error: 'Could not create the account. Check the request and retry.' });
