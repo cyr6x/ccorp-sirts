@@ -74,6 +74,10 @@
     border-color: rgba(239,27,36,.7);
     box-shadow: 0 0 0 3px rgba(239,27,36,.12);
   }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--sirts-red-bright);
+    outline-offset: 2px;
+  }
 
   .badge-critical { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30; }
   .badge-high { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-300 border border-red-500/25; }

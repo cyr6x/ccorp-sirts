@@ -149,25 +149,9 @@ export default function IncidentDetailPage() {
     setLinking(false);
   };
 
-  const handleKnowledgeArticle = async () => {
+  const handleKnowledgeArticle = () => {
     if (kbArticleId) { navigate(`/knowledge-base/${kbArticleId}`); return; }
-    setKbSaving(true);
-    setError('');
-    const { data, error } = await supabase.from('kb_articles').insert({
-      title: incident.title,
-      summary: incident.description.slice(0, 180),
-      content: `${incident.description}\n\nResolution notes:\n`,
-      category: incident.category,
-      tags: [incident.severity, incident.category].filter(Boolean),
-      source_incident_id: incident.id,
-      author_id: currentUser.id,
-    }).select('id').single();
-    if (error) setError(error.message);
-    else {
-      setKbArticleId(data.id);
-      navigate(`/knowledge-base/${data.id}`);
-    }
-    setKbSaving(false);
+    navigate(`/knowledge-base?source_incident=${encodeURIComponent(incident.id)}`);
   };
 
   const handleAddComment = async () => {
@@ -240,7 +224,7 @@ export default function IncidentDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Description</h3>
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{incident.description}</p>
+              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{incident.description || 'No description was recorded for this incident.'}</p>
             </div>
 
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">

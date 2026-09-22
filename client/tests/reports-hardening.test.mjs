@@ -10,6 +10,15 @@ test('CSV export neutralizes formula-like values', () => {
   for (const value of ['=1+1', '+SUM(A1:A2)', '@host', '\tunsafe']) assert.ok(csv.includes(`'${value}`));
 });
 
+test('CSV export uses registered incident assets instead of only legacy asset text', () => {
+  const csv = buildIncidentCsv([
+    { id:'1', title:'Asset report', category:'OTHER', severity:'LOW', status:'New', assigned_to_user:null, source_ip:null, affected_asset:'legacy-host', created_at:'2026-09-21', resolved_at:null,
+      incident_assets:[{ asset:{ name:'APP-01', ip_address:'10.10.0.8' } }, { asset:{ name:'DB-01', ip_address:null } }] },
+  ]);
+  assert.match(csv, /APP-01 · 10\.10\.0\.8; DB-01/);
+  assert.match(csv, /legacy-host/);
+});
+
 test('only the latest report request may publish exportable results', () => {
   const gate = createRequestGate();
   const first = gate.begin();

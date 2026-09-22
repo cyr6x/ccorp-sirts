@@ -8,6 +8,7 @@ const RISK_LEVELS   = ['LOW','MEDIUM','HIGH','CRITICAL'];
 
 const RISK_COLORS   = { LOW:'badge-low', MEDIUM:'badge-medium', HIGH:'badge-high', CRITICAL:'badge-critical' };
 const STATUS_COLORS = { ACTIVE:'text-gray-200', INACTIVE:'text-gray-500', MAINTENANCE:'text-gray-300', DECOMMISSIONED:'text-red-400' };
+const EMPTY_ASSET = { name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' };
 
 export default function AssetsPage() {
   const { currentUser } = useAuth();
@@ -18,7 +19,9 @@ export default function AssetsPage() {
   const [typeF,    setTypeF]    = useState('');
   const [statusF,  setStatusF]  = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form,     setForm]     = useState({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
+  const [form,     setForm]     = useState(EMPTY_ASSET);
+  const [editingAsset, setEditingAsset] = useState(null);
+  const [confirmAsset, setConfirmAsset] = useState(null);
   const [saving,   setSaving]   = useState(false);
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
@@ -35,21 +38,36 @@ export default function AssetsPage() {
 
   const handle = e => setForm(f => ({...f, [e.target.name]: e.target.value}));
 
-  const handleCreate = async e => {
+  const handleSave = async e => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('assets').insert({ ...form, ip_address: form.ip_address.trim() || null });
+    const values = { ...form, ip_address: form.ip_address.trim() || null };
+    const request = editingAsset
+      ? supabase.from('assets').update(values).eq('id', editingAsset.id).select('id').single()
+      : supabase.from('assets').insert(values).select('id').single();
+    const { error } = await request;
     if (error) { setError(error.message); setSaving(false); return; }
     setShowForm(false);
-    setForm({ name:'', type:'SERVER', ip_address:'', os:'', owner:'', risk_level:'LOW', status:'ACTIVE', notes:'' });
+    setEditingAsset(null);
+    setForm(EMPTY_ASSET);
     await load();
     setSaving(false);
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    const { error } = await supabase.from('assets').update({ status: newStatus }).eq('id', id).select('id').single();
-    if (error) { setError(error.message); return; }
-    setAssets(prev => prev.map(a => a.id === id ? {...a, status: newStatus} : a));
+  const openEdit = asset => {
+    setEditingAsset(asset);
+    setForm({ name:asset.name || '', type:asset.type || 'OTHER', ip_address:asset.ip_address || '', os:asset.os || '', owner:asset.owner || '', risk_level:asset.risk_level || 'LOW', status:asset.status || 'ACTIVE', notes:asset.notes || '' });
+    setShowForm(true);
+  };
+
+  const decommission = async () => {
+    if (!confirmAsset) return;
+    setSaving(true);
+    const { error } = await supabase.from('assets').update({ status:'DECOMMISSIONED' }).eq('id', confirmAsset.id).select('id').single();
+    if (error) { setError(error.message); setSaving(false); return; }
+    setConfirmAsset(null);
+    await load();
+    setSaving(false);
   };
 
   const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : 'N/A';
@@ -76,7 +94,7 @@ export default function AssetsPage() {
             <p className="text-gray-500 text-sm mt-0.5">{assets.length} registered assets</p>
           </div>
           {canManage && (
-            <button onClick={()=>setShowForm(v=>!v)} className="btn-primary flex items-center gap-2">
+            <button onClick={()=>{ setShowForm(v=>!v); setEditingAsset(null); setForm(EMPTY_ASSET); }} className="btn-primary flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               Add Asset
             </button>
@@ -95,8 +113,8 @@ export default function AssetsPage() {
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
 
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <h3 className="text-sm font-semibold text-gray-300 mb-4">Register New Asset</h3>
+          <form onSubmit={handleSave} className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+            <h3 className="text-sm font-semibold text-gray-300 mb-4">{editingAsset ? 'Edit Asset' : 'Register New Asset'}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div><label className="block text-xs font-medium text-gray-400 mb-1">Asset Name <span className="text-red-400">*</span></label><input name="name" value={form.name} onChange={handle} required placeholder="WEB-PROD-01" className="input w-full" /></div>
               <div><label className="block text-xs font-medium text-gray-400 mb-1">Type</label><select name="type" value={form.type} onChange={handle} className="select w-full">{ASSET_TYPES.map(t=><option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}</select></div>
@@ -108,8 +126,8 @@ export default function AssetsPage() {
               <div className="sm:col-span-2"><label className="block text-xs font-medium text-gray-400 mb-1">Notes</label><input name="notes" value={form.notes} onChange={handle} placeholder="Optional notes" className="input w-full" /></div>
             </div>
             <div className="flex gap-3 mt-4">
-              <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">{saving?<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>:'Register Asset'}</button>
-              <button type="button" onClick={()=>setShowForm(false)} className="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">{saving?<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>:(editingAsset ? 'Save Asset' : 'Register Asset')}</button>
+              <button type="button" onClick={()=>{ setShowForm(false); setEditingAsset(null); setForm(EMPTY_ASSET); }} className="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors">Cancel</button>
             </div>
           </form>
         )}
@@ -125,8 +143,14 @@ export default function AssetsPage() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        {confirmAsset && <section role="dialog" aria-modal="true" aria-labelledby="decommission-title" className="mb-5 bg-gray-900 border border-red-700/50 rounded-xl p-5">
+          <h2 id="decommission-title" className="text-sm font-semibold text-white">Decommission {confirmAsset.name}?</h2>
+          <p className="text-sm text-gray-400 mt-2">The asset record and its audit history will be retained. It will no longer be selectable for new incident links.</p>
+          <div className="flex gap-3 mt-4"><button onClick={decommission} disabled={saving} className="btn-primary">Confirm decommission</button><button onClick={()=>setConfirmAsset(null)} className="btn-secondary">Cancel</button></div>
+        </section>}
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
             <thead><tr className="border-b border-gray-800 bg-gray-800/50">
               <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Asset</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Type</th>
@@ -147,11 +171,7 @@ export default function AssetsPage() {
                   <td className="px-5 py-4 hidden lg:table-cell text-xs text-gray-400">{a.owner||'\u2014'}</td>
                   <td className="px-5 py-4"><span className={RISK_COLORS[a.risk_level]}>{a.risk_level}</span></td>
                   <td className="px-5 py-4"><span className={`text-xs font-medium ${STATUS_COLORS[a.status]||'text-gray-400'}`}>{a.status}</span></td>
-                  {canManage && <td className="px-5 py-4">
-                    <select value={a.status} onChange={e=>handleStatusChange(a.id,e.target.value)} className="text-xs bg-gray-800 border border-gray-700 text-gray-300 rounded px-2 py-1 focus:outline-none focus:border-red-500">
-                      {ASSET_STATUS.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </td>}
+                  {canManage && <td className="px-5 py-4 whitespace-nowrap"><button onClick={()=>openEdit(a)} className="text-xs text-gray-300 hover:text-white mr-3">Edit</button>{a.status !== 'DECOMMISSIONED' && <button onClick={()=>setConfirmAsset(a)} className="text-xs text-red-400 hover:text-red-300">Decommission</button>}</td>}
                 </tr>
               ))}
             </tbody>

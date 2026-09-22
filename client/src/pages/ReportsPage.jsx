@@ -47,7 +47,7 @@ export default function ReportsPage() {
       setError('');
       setIncidents([]);
       setLoadedFilterKey('');
-      let query = supabase.from('incidents').select('*, assigned_to_user:users!incidents_assigned_to_fkey(name)').order('created_at', { ascending: false });
+      let query = supabase.from('incidents').select('*, assigned_to_user:users!incidents_assigned_to_fkey(name), incident_assets(asset:assets(name, ip_address))').order('created_at', { ascending: false });
       if (range !== 'all') {
         const since = new Date(Date.now() - parseInt(range) * 86400000).toISOString();
         query = query.gte('created_at', since);
@@ -130,7 +130,7 @@ export default function ReportsPage() {
             <h1 className="text-2xl font-bold text-white">Reports <span className="text-red-400">&amp; Analytics</span></h1>
             <p className="text-gray-500 text-sm mt-0.5">Incident metrics for the selected period</p>
           </div>
-          <button type="button" onClick={exportCsv} disabled={!exportReady} className="btn-primary disabled:opacity-50">Export CSV</button>
+          <button type="button" onClick={exportCsv} disabled={!exportReady} className="btn-primary disabled:opacity-50" aria-describedby="report-export-status">Export CSV</button>
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -141,6 +141,7 @@ export default function ReportsPage() {
         </div>
 
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
+        <p id="report-export-status" className="sr-only">{exportReady ? 'Current filtered results are ready for export.' : 'Export is disabled until the current filter results have loaded successfully.'}</p>
 
         {loading ? (
           <div className="flex items-center justify-center h-64">

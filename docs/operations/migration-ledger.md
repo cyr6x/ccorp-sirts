@@ -12,5 +12,8 @@ The checked-in migration versions below match the hosted `CCORP_SIRTS_REBUILD` h
 | 20260919192638 | complete_live_feature_wiring |
 | 20260919192801 | index_incident_assets_added_by |
 | 20260919193710 | enforce_one_kb_article_per_incident |
+| 20260921082100 | production_readiness_deadlines_and_audit |
+| 20260922233410 | final_freeze_integrity |
+| 20260922233443 | final_freeze_rpc_privileges |
 
 Before applying the next migration, compare the hosted migration list to this ledger and confirm that the pending migration is the only difference.

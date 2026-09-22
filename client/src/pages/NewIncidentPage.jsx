@@ -34,31 +34,17 @@ export default function NewIncidentPage() {
     e.preventDefault();
     setSubmitting(true);
     setError('');
-    const { data, error } = await supabase.from('incidents').insert({
-      title:          form.title,
-      description:    form.description,
-      category:       form.category,
-      severity:       form.severity,
-      source_ip:      form.source_ip || null,
-      affected_asset: form.affected_asset || null,
-      status:         'New',
-      created_by:     currentUser.id,
-      assigned_to:    null,
-    }).select().single();
+    const { data, error } = await supabase.rpc('create_incident_with_assets', {
+      p_title: form.title,
+      p_description: form.description,
+      p_category: form.category,
+      p_severity: form.severity,
+      p_source_ip: form.source_ip.trim() || null,
+      p_affected_asset: form.affected_asset,
+      p_asset_ids: selectedAssetIds,
+    });
     if (error) { setError(error.message); setSubmitting(false); return; }
-    if (selectedAssetIds.length > 0) {
-      const result = await supabase.from('incident_assets').insert(selectedAssetIds.map(assetId => ({
-        incident_id: data.id,
-        asset_id: assetId,
-        added_by: currentUser.id,
-      })));
-      if (result.error) {
-        setError(`Incident created, but its asset links failed: ${result.error.message}`);
-        setSubmitting(false);
-        return;
-      }
-    }
-    navigate(`/incidents/${data.id}`);
+    navigate(`/incidents/${data}`);
   };
 
   return (
@@ -75,12 +61,12 @@ export default function NewIncidentPage() {
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Title <span className="text-red-400">*</span></label>
-            <input name="title" value={form.title} onChange={handle} required placeholder="Brief incident title" className="input w-full" />
+            <label htmlFor="incident-title" className="block text-sm font-medium text-gray-300 mb-1">Title <span className="text-red-400">*</span></label>
+            <input id="incident-title" name="title" value={form.title} onChange={handle} required placeholder="Brief incident title" className="input w-full" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Description <span className="text-red-400">*</span></label>
-            <textarea name="description" value={form.description} onChange={handle} required rows={5} placeholder="Detailed description of the incident..." className="input w-full resize-none" />
+            <label htmlFor="incident-description" className="block text-sm font-medium text-gray-300 mb-1">Description <span className="text-red-400">*</span></label>
+            <textarea id="incident-description" name="description" value={form.description} onChange={handle} required rows={5} placeholder="Detailed description of the incident..." className="input w-full resize-none" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

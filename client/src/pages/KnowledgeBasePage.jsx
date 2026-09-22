@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { abbreviatedName } from '../lib/formatters.js';
@@ -8,6 +8,7 @@ const CATEGORIES = ['PHISHING','MALWARE','UNAUTHORISED_ACCESS','DOS','OTHER'];
 
 export default function KnowledgeBasePage() {
   const { currentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [articles,  setArticles]  = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
@@ -18,6 +19,7 @@ export default function KnowledgeBasePage() {
   const [saving,    setSaving]    = useState(false);
 
   const canCreate = currentUser?.role === 'ADMIN' || currentUser?.role === 'SOC_LEAD';
+  const sourceIncidentId = searchParams.get('source_incident');
 
   const load = async () => {
     setLoading(true);
@@ -32,6 +34,22 @@ export default function KnowledgeBasePage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!sourceIncidentId || !canCreate) return;
+    (async () => {
+      const { data, error } = await supabase.from('incidents').select('id, title, category, severity').eq('id', sourceIncidentId).single();
+      if (error) { setError('The source incident is unavailable for conversion.'); return; }
+      setForm(current => ({
+        ...current,
+        title: current.title || `Response guidance: ${data.title}`,
+        summary: current.summary || 'Manager-reviewed knowledge-base article derived from an incident record.',
+        category: data.category || current.category,
+        tags: current.tags || [data.severity, data.category].filter(Boolean).join(', '),
+      }));
+      setShowForm(true);
+    })();
+  }, [sourceIncidentId, canCreate]);
+
   const handle = e => setForm(f => ({...f, [e.target.name]: e.target.value}));
 
   const handleCreate = async e => {
@@ -44,10 +62,12 @@ export default function KnowledgeBasePage() {
       category: form.category,
       tags: form.tags.split(',').map(tag => tag.trim()).filter(Boolean),
       author_id: currentUser.id,
+      source_incident_id: sourceIncidentId || null,
     });
     if (error) { setError(error.message); setSaving(false); return; }
     setShowForm(false);
     setForm({ title:'', summary:'', content:'', category:'PHISHING', tags:'' });
+    setSearchParams({});
     await load();
     setSaving(false);
   };
@@ -70,7 +90,7 @@ export default function KnowledgeBasePage() {
             <p className="text-gray-500 text-sm mt-0.5">{articles.length} articles &bull; SOC playbooks and threat intelligence</p>
           </div>
           {canCreate && (
-            <button onClick={()=>setShowForm(v=>!v)} className="btn-primary flex items-center gap-2">
+            <button onClick={()=>{ setShowForm(v=>!v); if (sourceIncidentId) setSearchParams({}); }} className="btn-primary flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
               New Article
             </button>
@@ -81,7 +101,10 @@ export default function KnowledgeBasePage() {
 
         {showForm && (
           <form onSubmit={handleCreate} className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-300">New Article</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-300">New Article</h3>
+              {sourceIncidentId && <p className="text-xs text-gray-500 mt-1">Source incident retained for traceability. Review and redact the article before publishing; incident narrative is not copied automatically.</p>}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-gray-400 mb-1">Title</label>
@@ -110,7 +133,7 @@ export default function KnowledgeBasePage() {
               <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Publishing...</> : 'Publish'}
               </button>
-              <button type="button" onClick={()=>setShowForm(false)} className="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors">Cancel</button>
+              <button type="button" onClick={()=>{ setShowForm(false); if (sourceIncidentId) setSearchParams({}); }} className="px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors">Cancel</button>
             </div>
           </form>
         )}

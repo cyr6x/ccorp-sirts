@@ -1,5 +1,7 @@
 # CCorp SIRTS — morning recovery
 
+> Final-project freeze: the active source line is `codex/readiness-hardening` until it is fast-forwarded to `rebuild/morning-sirts`. The current final pass adds the KDPA tracker, audited asset management, registered-asset report exports and integrity safeguards. For the marker-facing launch instructions and demo credentials, use the submission README packaged beside this source tree; do not place credentials in the Git repository.
+
 Recovery branch: `rebuild/morning-sirts`.
 Reference snapshot: `7a8f7ccae4e21ec32937d56d734424ae2daf7a3f`.
 Original main: `09c4c7f51f308226258d1b716c40758750fb927e`, preserved by `backup/main-pre-morning-rebuild`.

@@ -182,5 +182,13 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
       const deletionAudit = await as(0, "select details from public.audit_log where action='INCIDENT_DELETED' order by created_at desc limit 1");
       assert.equal(JSON.parse(deletionAudit.rows[0].details).incident_id, deletableIncident);
     });
+    await t.test('incident creation keeps selected assets atomic and assignment rejects locked profiles', async () => {
+      const assetId = (await as(0, 'select id from public.assets order by created_at limit 1')).rows[0].id;
+      const created = await as(0, "select public.create_incident_with_assets($1,$2,$3,$4,$5,$6,array[$7]::uuid[]) as id", ['Atomic incident','Required narrative','OTHER','HIGH','192.168.10.10',null,assetId]);
+      const incidentId = created.rows[0].id;
+      const linked = await as(0, 'select asset_id from public.incident_assets where incident_id=$1', [incidentId]);
+      assert.deepEqual(linked.rows.map(row => row.asset_id), [assetId]);
+      await assert.rejects(as(0, "update public.incidents set assigned_to=$1 where id=$2", [ids[5] || '00000000-0000-4000-8000-000000000009', incidentId]), /valid role/);
+    });
   } finally { await db.close(); }
 });

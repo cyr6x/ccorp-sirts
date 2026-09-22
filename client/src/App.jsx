@@ -14,6 +14,7 @@ import KnowledgeBasePage from './pages/KnowledgeBasePage.jsx';
 import KnowledgeBaseArticlePage from './pages/KnowledgeBaseArticlePage.jsx';
 import AssetsPage from './pages/AssetsPage.jsx';
 import AuditLogsPage from './pages/AuditLogsPage.jsx';
+import KdpaTrackerPage from './pages/KdpaTrackerPage.jsx';
 
 const PrivateRoute = ({ children, roles }) => {
   const { currentUser, loading } = useAuth();
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/knowledge-base/:id" element={<PrivateRoute><KnowledgeBaseArticlePage /></PrivateRoute>} />
           <Route path="/assets" element={<PrivateRoute><AssetsPage /></PrivateRoute>} />
           <Route path="/audit-logs" element={<PrivateRoute roles={['ADMIN','SOC_LEAD']}><AuditLogsPage /></PrivateRoute>} />
+          <Route path="/kdpa-tracker" element={<PrivateRoute roles={['ADMIN','SOC_LEAD']}><KdpaTrackerPage /></PrivateRoute>} />
           <Route path="*" element={<Navigate to={currentUser ? '/dashboard' : '/login'} replace />} />
         </Routes>
       </div>

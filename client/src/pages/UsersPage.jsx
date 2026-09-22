@@ -140,12 +140,11 @@ export default function UsersPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Incidents</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {loading && <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
-              {!loading && filtered.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-600 text-sm">No users found.</td></tr>}
+              {loading && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm"><span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Loading...</span></td></tr>}
+              {!loading && filtered.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-600 text-sm">No users found.</td></tr>}
               {!loading && filtered.map(u => (
                 <tr key={u.id} className="hover:bg-gray-800/30 transition-colors">
                   <td className="px-5 py-4">
@@ -172,9 +171,6 @@ export default function UsersPage() {
                   </td>
                   <td className="px-5 py-4 text-gray-300 text-xs font-mono">{incidentCounts[u.id] || 0}</td>
                   <td className="px-5 py-4 hidden lg:table-cell text-gray-500 text-xs font-mono">{fmt(u.created_at)}</td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs text-gray-300">&bull; Active</span>
-                  </td>
                 </tr>
               ))}
             </tbody>

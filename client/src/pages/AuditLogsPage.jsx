@@ -3,7 +3,21 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { abbreviatedName } from '../lib/formatters.js';
 
-const ACTIONS = ['','INCIDENT_CREATED','STATUS_CHANGED','SEVERITY_CHANGED','INCIDENT_UPDATED','COMMENT_ADDED','ASSIGNED','RESOLVED','CLOSED'];
+const ACTIONS = [
+  '', 'INCIDENT_CREATED', 'STATUS_CHANGED', 'SEVERITY_CHANGED', 'INCIDENT_UPDATED', 'COMMENT_ADDED', 'ASSIGNED', 'RESOLVED', 'CLOSED',
+  'USER_PROVISIONED', 'USER_ROLE_CHANGED', 'USER_ROLE_REMOVED', 'ASSET_CREATED', 'ASSET_UPDATED', 'ASSET_DELETED',
+  'KB_ARTICLE_CREATED', 'KB_ARTICLE_UPDATED', 'KB_ARTICLE_DELETED', 'INCIDENT_ASSET_LINKED', 'INCIDENT_ASSET_UNLINKED',
+  'NOTIFICATION_STATE_CHANGED', 'INCIDENT_DELETED',
+];
+
+const readableDetails = details => {
+  if (!details) return '—';
+  try {
+    const data = JSON.parse(details);
+    const entries = Object.entries(data).filter(([key, value]) => !['before', 'after', 'actor_id'].includes(key) && value != null);
+    return entries.map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'string' ? value : JSON.stringify(value)}`).join(' · ') || 'Recorded system action';
+  } catch { return details; }
+};
 
 export default function AuditLogsPage() {
   const [logs,    setLogs]    = useState([]);
@@ -60,6 +74,18 @@ export default function AuditLogsPage() {
     ASSIGNED:         'text-red-300 bg-red-500/10',
     RESOLVED:         'text-gray-300 bg-gray-500/10',
     CLOSED:           'text-gray-400 bg-gray-500/10',
+    USER_ROLE_CHANGED: 'text-red-300 bg-red-500/10',
+    USER_ROLE_REMOVED: 'text-red-300 bg-red-500/10',
+    USER_PROVISIONED:  'text-red-300 bg-red-500/10',
+    ASSET_CREATED:     'text-gray-300 bg-gray-500/10',
+    ASSET_UPDATED:     'text-gray-300 bg-gray-500/10',
+    ASSET_DELETED:     'text-red-300 bg-red-500/10',
+    KB_ARTICLE_CREATED:'text-gray-300 bg-gray-500/10',
+    KB_ARTICLE_UPDATED:'text-gray-300 bg-gray-500/10',
+    KB_ARTICLE_DELETED:'text-red-300 bg-red-500/10',
+    INCIDENT_ASSET_LINKED: 'text-gray-300 bg-gray-500/10',
+    INCIDENT_ASSET_UNLINKED: 'text-gray-300 bg-gray-500/10',
+    NOTIFICATION_STATE_CHANGED: 'text-red-300 bg-red-500/10',
   };
 
   return (
@@ -67,7 +93,7 @@ export default function AuditLogsPage() {
       <div className="max-w-screen-xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Audit <span className="text-red-400">Logs</span></h1>
-          <p className="text-gray-500 text-sm mt-0.5">Immutable record of all system actions</p>
+          <p className="text-gray-500 text-sm mt-0.5">Recorded incident, account, asset, knowledge-base and tracker actions</p>
         </div>
 
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
@@ -113,7 +139,7 @@ export default function AuditLogsPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-xs text-gray-400 font-sans">{log.actor?.name ? abbreviatedName(log.actor.name) : <span className="italic text-gray-600">System</span>}</td>
-                  <td className="px-5 py-3 text-xs text-gray-400 font-sans max-w-xs truncate">{log.details || '\u2014'}</td>
+                  <td className="px-5 py-3 text-xs text-gray-400 font-sans max-w-xs truncate" title={readableDetails(log.details)}>{readableDetails(log.details)}</td>
                   <td className="px-5 py-3 hidden lg:table-cell text-xs font-sans">
                     {log.incident_id
                       ? <Link to={`/incidents/${log.incident_id}`} className="text-red-400 hover:text-red-300 hover:underline truncate block max-w-[180px]">{log.incident?.title || log.incident_id}</Link>
