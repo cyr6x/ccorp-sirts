@@ -1,6 +1,6 @@
 # CCorp SIRTS — morning recovery
 
-> Final-project freeze: the active source line is `codex/readiness-hardening` until it is fast-forwarded to `rebuild/morning-sirts`. The current final pass adds the KDPA tracker, audited asset management, registered-asset report exports and integrity safeguards. For the marker-facing launch instructions and demo credentials, use the submission README packaged beside this source tree; do not place credentials in the Git repository.
+> C3 candidate work is isolated on `codex/sirts-c3-preview` from the C2 commit `abd5062d9de7633d517a6fcaa1c64a898e950ea5`. The new breach-assessment migration has only been tested locally; it is **not** applied to the hosted database. The C3 preview is not a final marker-facing release. For demo credentials, use the separately controlled submission README; never commit credentials here.
 
 Recovery branch: `rebuild/morning-sirts`.
 Reference snapshot: `7a8f7ccae4e21ec32937d56d734424ae2daf7a3f`.

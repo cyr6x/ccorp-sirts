@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { abbreviatedName } from '../lib/formatters.js';
 import { buildIncidentCsv } from '../lib/reportExport.js';
-import { createRequestGate, reportFilterKey } from '../lib/reportRequestState.js';
+import { createRequestGate, reportFilterKey, loadFilteredReports } from '../lib/reportRequestState.js';
 
 const RANGES = [{ label:'Last 7 days', value:'7' }, { label:'Last 30 days', value:'30' }, { label:'Last 90 days', value:'90' }, { label:'All time', value:'all' }];
 const SEV_COLORS = { CRITICAL:'#ef1b24', HIGH:'#c8141c', MEDIUM:'#73737b', LOW:'#b9b9be' };
@@ -41,8 +41,8 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const requestId = requestGate.current.begin();
       setLoading(true);
       setError('');
       setIncidents([]);
@@ -56,18 +56,20 @@ export default function ReportsPage() {
       if (severity) query = query.eq('severity', severity);
       if (assignee === 'unassigned') query = query.is('assigned_to', null);
       else if (assignee) query = query.eq('assigned_to', assignee);
-      const { data, error } = await query;
-      if (!requestGate.current.isCurrent(requestId)) return;
-      if (error) {
-        setError(error.message);
-        setIncidents([]);
-        setLoadedFilterKey('');
-      } else {
-        setIncidents(data || []);
-        setLoadedFilterKey(filterKey);
-      }
-      setLoading(false);
+      await loadFilteredReports(requestGate.current, filterKey, () => query, ({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setError('Reports could not be loaded. Please retry the filters.');
+          setIncidents([]);
+          setLoadedFilterKey('');
+        } else {
+          setIncidents(data || []);
+          setLoadedFilterKey(filterKey);
+        }
+        setLoading(false);
+      });
     })();
+    return () => { active = false; };
   }, [range, status, severity, assignee, filterKey]);
 
   const agg = (field) => incidents.reduce((acc, i) => {
@@ -109,7 +111,8 @@ export default function ReportsPage() {
     return i.status !== 'Resolved' && i.status !== 'Closed' && t && ((Date.now() - new Date(i.created_at)) / 3600000) > t;
   }).length;
 
-  const exportReady = !loading && !error && incidents.length > 0 && loadedFilterKey === filterKey;
+  const currentResults = !loading && !error && loadedFilterKey === filterKey;
+  const exportReady = currentResults && incidents.length > 0;
 
   const exportCsv = () => {
     if (!exportReady) return;
@@ -134,20 +137,21 @@ export default function ReportsPage() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <select value={range} onChange={event => setRange(event.target.value)} className="select"><option disabled>Period</option>{RANGES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-          <select value={status} onChange={event => setStatus(event.target.value)} className="select"><option value="">All statuses</option>{STATUSES.map(item => <option key={item} value={item}>{item}</option>)}</select>
-          <select value={severity} onChange={event => setSeverity(event.target.value)} className="select"><option value="">All severities</option>{SEVERITIES.map(item => <option key={item} value={item}>{item}</option>)}</select>
-          <select value={assignee} onChange={event => setAssignee(event.target.value)} className="select"><option value="">All assignees</option><option value="unassigned">Unassigned</option>{users.map(user => <option key={user.id} value={user.id}>{abbreviatedName(user.name)}</option>)}</select>
+          <select aria-label="Report period" value={range} onChange={event => setRange(event.target.value)} className="select">{RANGES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+          <select aria-label="Incident status" value={status} onChange={event => setStatus(event.target.value)} className="select"><option value="">All statuses</option>{STATUSES.map(item => <option key={item} value={item}>{item}</option>)}</select>
+          <select aria-label="Incident severity" value={severity} onChange={event => setSeverity(event.target.value)} className="select"><option value="">All severities</option>{SEVERITIES.map(item => <option key={item} value={item}>{item}</option>)}</select>
+          <select aria-label="Assigned analyst" value={assignee} onChange={event => setAssignee(event.target.value)} className="select"><option value="">All assignees</option><option value="unassigned">Unassigned</option>{users.map(user => <option key={user.id} value={user.id}>{abbreviatedName(user.name)}</option>)}</select>
+          <button type="button" onClick={() => { setRange('30'); setStatus(''); setSeverity(''); setAssignee(''); }} className="text-sm text-gray-300 underline underline-offset-2">Reset filters</button>
         </div>
 
         {error && <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">{error}</div>}
         <p id="report-export-status" className="sr-only">{exportReady ? 'Current filtered results are ready for export.' : 'Export is disabled until the current filter results have loaded successfully.'}</p>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
+        {!currentResults && !error ? (
+          <div role="status" aria-label="Loading current report results" className="flex items-center justify-center h-64">
             <span className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : (
+        ) : error ? null : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <SummaryCard label="Total Incidents" value={incidents.length} />

@@ -61,7 +61,7 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
     });
     await t.test('all tables deny anonymous reads', async () => {
       await db.exec('set role anon');
-      for (const name of ['users','roles','incidents','comments','incident_updates','notifications','audit_log','kb_articles','assets','incident_assets']) {
+      for (const name of ['users','roles','incidents','comments','incident_updates','notifications','audit_log','kb_articles','assets','incident_assets','breach_assessments']) {
         await assert.rejects(db.query(`select * from public.${name}`), /permission denied/);
       }
       await db.exec('reset role');
@@ -142,7 +142,7 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
 
       const activeIncident = (await as(0, "insert into public.incidents(title,severity,created_by) values('Deadline tracker','CRITICAL',$1) returning id", [ids[0]])).rows[0].id;
       const initialTrackers = await as(0, "select type,state,deadline_at from public.notifications where incident_id=$1 order by type", [activeIncident]);
-      assert.deepEqual(initialTrackers.rows.map(row => row.type), ['KDPA_NOTIFICATION','SLA_DEADLINE']);
+      assert.deepEqual(initialTrackers.rows.map(row => row.type), ['SLA_DEADLINE']);
       assert(initialTrackers.rows.every(row => row.state === 'PENDING' && row.deadline_at));
 
       await as(0, "update public.incidents set status='In Progress' where id=$1", [activeIncident]);
@@ -152,10 +152,36 @@ test('clean migration chain: SQL execution and direct role/row authorization', a
 
       await as(0, "update public.incidents set status='In Progress' where id=$1", [activeIncident]);
       const reopenedTrackers = await as(0, "select type,state from public.notifications where incident_id=$1 order by type", [activeIncident]);
-      assert.deepEqual(reopenedTrackers.rows, [
-        { type:'KDPA_NOTIFICATION', state:'PENDING' },
-        { type:'SLA_DEADLINE', state:'PENDING' },
-      ]);
+      assert.deepEqual(reopenedTrackers.rows, [{ type:'SLA_DEADLINE', state:'PENDING' }]);
+    });
+    await t.test('breach assessment is human-controlled, role restricted, audited, and separate from SLA', async () => {
+      const incidentId = incidentIds[0];
+      assert.equal((await as(2, 'select * from public.breach_assessments')).rows.length, 0);
+      await assert.rejects(as(2, 'insert into public.breach_assessments(incident_id) values($1)', [incidentIds[2]]), /row-level security/);
+      await assert.rejects(as(0, "insert into public.breach_assessments(incident_id,outcome) values($1,'NOTIFICATION_REQUIRED')", [incidentId]), /qualifying assessment/);
+      const start = '2026-09-20T10:00:00Z';
+      const created = await as(0, `insert into public.breach_assessments
+        (incident_id,personal_data_involved,unauthorised_access_or_acquisition,real_risk_of_harm,awareness_at,outcome,assessment_reason,responsible_role)
+        values ($1,true,true,true,$2,'NOTIFICATION_REQUIRED','Management determined notification required','SOC_LEAD')
+        returning outcome,notification_state,deadline_at,created_by`, [incidentId,start]);
+      assert.equal(created.rows[0].notification_state, 'PENDING');
+      assert.equal(created.rows[0].created_by, ids[0]);
+      assert.equal(new Date(created.rows[0].deadline_at).toISOString(), '2026-09-23T10:00:00.000Z');
+      assert.equal((await as(1, 'select incident_id from public.breach_assessments where incident_id=$1', [incidentId])).rows.length, 1);
+      assert.equal((await as(3, "update public.breach_assessments set notification_state='SENT' where incident_id=$1 returning incident_id", [incidentId])).rows.length, 0);
+      const sent = await as(1, "update public.breach_assessments set notification_state='SENT' where incident_id=$1 returning notified_at", [incidentId]);
+      assert(sent.rows[0].notified_at);
+      await assert.rejects(as(1, "update public.breach_assessments set awareness_at='2026-09-21T10:00:00Z' where incident_id=$1", [incidentId]), /cannot change its awareness time/);
+      assert.equal((await as(0, "select count(*)::int as n from public.audit_log where incident_id=$1 and action in ('BREACH_ASSESSMENT_CREATED','BREACH_NOTIFICATION_STATE_CHANGED')", [incidentId])).rows[0].n, 2);
+      assert.equal((await as(0, "select count(*)::int as n from public.notifications where incident_id=$1 and type='KDPA_NOTIFICATION'", [incidentId])).rows[0].n, 0);
+      await assert.rejects(as(0, 'delete from public.breach_assessments where incident_id=$1', [incidentId]), /permission denied/);
+      const lowIncident = incidentIds[1];
+      const review = await as(1, "insert into public.breach_assessments(incident_id) values($1) returning outcome,deadline_at", [lowIncident]);
+      assert.equal(review.rows[0].outcome, 'PENDING_REVIEW');
+      assert.equal(review.rows[0].deadline_at, null);
+      const noNotice = await as(1, "update public.breach_assessments set outcome='NOTIFICATION_NOT_REQUIRED',assessment_reason='No personal information involved' where incident_id=$1 returning deadline_at,notification_state", [lowIncident]);
+      assert.equal(noNotice.rows[0].deadline_at, null);
+      assert.equal(noNotice.rows[0].notification_state, null);
     });
     await t.test('role, asset, KB, link, and deletion activity is audited', async () => {
       const assetId = (await as(0, "insert into public.assets(name) values('Audited asset') returning id")).rows[0].id;

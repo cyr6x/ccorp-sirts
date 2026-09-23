@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildIncidentCsv } from '../src/lib/reportExport.js';
-import { createRequestGate, reportFilterKey } from '../src/lib/reportRequestState.js';
+import Papa from 'papaparse';
+import { createRequestGate, reportFilterKey, loadFilteredReports } from '../src/lib/reportRequestState.js';
 
 test('CSV export neutralizes formula-like values', () => {
   const csv = buildIncidentCsv([
@@ -26,4 +27,35 @@ test('only the latest report request may publish exportable results', () => {
   assert.equal(gate.isCurrent(first), false);
   assert.equal(gate.isCurrent(second), true);
   assert.notEqual(reportFilterKey({ range:'all', status:'Closed', severity:'CRITICAL', assignee:'' }), reportFilterKey({ range:'all', status:'Closed', severity:'', assignee:'' }));
+});
+
+test('page request publisher ignores an older delayed response and exports only the new filter', async () => {
+  const gate = createRequestGate();
+  let finishOld, finishNew;
+  const oldResponse = new Promise(resolve => { finishOld = resolve; });
+  const newResponse = new Promise(resolve => { finishNew = resolve; });
+  let displayed = [];
+  let loadedKey = '';
+  const publish = ({ data, filterKey }) => { displayed = data; loadedKey = filterKey; };
+  const oldKey = reportFilterKey({ status: 'New' });
+  const newKey = reportFilterKey({ status: 'Closed' });
+  const oldLoad = loadFilteredReports(gate, oldKey, () => oldResponse, publish);
+  const newLoad = loadFilteredReports(gate, newKey, () => newResponse, publish);
+  finishNew({ data: [{ id:'new', title:'Closed incident' }] });
+  await newLoad;
+  finishOld({ data: [{ id:'old', title:'New incident' }] });
+  await oldLoad;
+  assert.equal(loadedKey, newKey);
+  assert.equal(displayed[0].id, 'new');
+  const exportRows = Papa.parse(buildIncidentCsv(displayed), { header:true }).data;
+  assert.equal(exportRows[0].Title, 'Closed incident');
+});
+
+test('CSV treats formulas and quoted, comma, newline and empty fields as literal cells', () => {
+  const csv = buildIncidentCsv([{ id:'1', title:'"Quoted", line\nnext', category:'OTHER', severity:'LOW', status:'New', source_ip:'\r=SUM(1,2)', affected_asset:null, incident_assets:[{asset:{name:'-DANGEROUS', ip_address:null}}] }]);
+  const parsed = Papa.parse(csv, { header:true }).data[0];
+  assert.equal(parsed.Title, '"Quoted", line\nnext');
+  assert.equal(parsed['Source IP'], "'\r=SUM(1,2)");
+  assert.equal(parsed['Registered Assets'], "'-DANGEROUS");
+  assert.equal(parsed['Unregistered Asset'], '');
 });

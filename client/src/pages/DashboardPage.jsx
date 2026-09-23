@@ -46,7 +46,7 @@ export default function DashboardPage() {
         supabase.from('incidents').select('created_at, resolved_at').not('resolved_at','is',null),
         supabase.from('incidents').select('id, title, severity, status, category, created_at, affected_asset, assigned_to_user:users!incidents_assigned_to_fkey(name)').order('created_at',{ascending:false}).limit(8),
         canViewDeadlineAlerts
-          ? supabase.from('notifications').select('*').lt('deadline_at', new Date(Date.now()+12*60*60*1000).toISOString()).eq('state','PENDING')
+          ? supabase.from('notifications').select('*').eq('type','SLA_DEADLINE').lt('deadline_at', new Date(Date.now()+12*60*60*1000).toISOString()).eq('state','PENDING')
           : Promise.resolve({ data: [], error: null }),
         supabase.from('incidents').select('category, created_at').gte('created_at', weekAgo),
       ]);
@@ -99,10 +99,10 @@ export default function DashboardPage() {
         {error && <p role="alert" className="mb-6 p-4 border border-red-700 rounded-lg text-red-300">Dashboard unavailable: {error}</p>}
         {alerts.length > 0 && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-xl">
-            <p className="text-sm font-semibold text-red-400 mb-2">Deadline Alert &mdash; {alerts.length} pending operational or 72-hour incident-notification deadline{alerts.length>1?'s':''}</p>
+            <p className="text-sm font-semibold text-red-400 mb-2">Operational SLA &mdash; {alerts.length} pending deadline{alerts.length>1?'s':''}</p>
             <div className="space-y-1">
               {alerts.map(a => (
-                <p key={a.id} className="text-xs text-red-300">{a.type === 'KDPA_NOTIFICATION' ? '72-hour incident-notification tracker' : 'Operational SLA'} &mdash; Incident ID: {a.incident_id} &mdash; Deadline: {new Date(a.deadline_at).toLocaleString('en-GB')}</p>
+                <p key={a.id} className="text-xs text-red-300">Incident ID: {a.incident_id} &mdash; Deadline: {new Date(a.deadline_at).toLocaleString('en-GB')}</p>
               ))}
             </div>
           </div>
