@@ -1,8 +1,8 @@
 # SIRTS P4 Handoff
 
-## Decision
+## Final project decision
 
-Move to P4 verification against the existing C2 release. This is a final-year project; no paid Supabase branch or production-grade infrastructure work is required. Do not apply the C3 migration or merge the C3 branch for P4.
+The SIRTS build is frozen for this final-year project. Do not add features, open another regression cycle, create a paid Supabase branch, or pursue production-grade infrastructure. Move to the next academic phase using the existing C2 release and evidence already collected. The only remaining site setup is adding the three Vercel Production variables below so the deployed frontend can reach its already-migrated Supabase project.
 
 ## Release to verify
 
@@ -15,7 +15,7 @@ Move to P4 verification against the existing C2 release. This is a final-year pr
 | Existing Supabase BaaS | `cudagansojpjtligqewe` |
 | Hosted migration head | `20260922233443_final_freeze_rpc_privileges` |
 
-Production is currently built but shows “Backend setup pending” until its Vercel Production environment is configured. The GitHub branch `codex/sirts-c3-preview` (commit `9382d79d836d609636cb66cc088ea9131607dafe`) is a separate candidate, not the P4 release. Its new breach-assessment table is not in the hosted database.
+Production is currently built but shows “Backend setup pending” until its Vercel Production environment is configured. The hosted migration head matches C2. The GitHub branch `codex/sirts-c3-preview` is an optional candidate, not the release to use; its new breach-assessment table was never applied to Supabase.
 
 ## Restore the C2 production connection
 
@@ -27,17 +27,17 @@ VITE_SUPABASE_PROJECT_REF=cudagansojpjtligqewe
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_7Ku7K5tORIuWqZt8HeX5Lg_8ZyZKxbG
 ```
 
-Save, then redeploy the latest Production deployment from `main`. In a private browser window, confirm the normal SIRTS login page appears instead of “Backend setup pending.” Use the demo credentials only from the separately supplied submission README; never include passwords in this handoff or Git.
+Save, then redeploy the latest Production deployment from `main`. In a private browser window, confirm the normal SIRTS login page appears instead of “Backend setup pending.” Use the demo credentials only from the separately supplied submission README; never include passwords in this handoff or Git. This is a deployment configuration step, not another code change.
 
 This only restores the existing frontend-to-Supabase connection. It does not alter schema or records. Do not promote `codex/sirts-c3-preview` or run its migration as part of this step.
 
-## P4 verification focus
+## Evidence and limits
 
-Use the restored C2 URL and record actual expected/observed outcomes. At minimum check: anonymous deep-link denial; each available role’s navigation and scope; incident list/detail; incident creation and refresh persistence; lifecycle/assignment; comments/history; dashboard and operational SLA; reports filters and CSV; KB; assets; audit; user management restriction; sign-out; and narrow-screen usability.
+The C3 candidate passed `npm ci`, all 24 automated tests, and `npm run build`; its isolated Vercel Preview build reached READY. Its added breach-assessment migration was tested locally but never applied to the hosted database. These results are evidence for the candidate only, not proof that a hosted C3 workflow was tested.
 
-Keep evidence proportionate: screenshots of principal screens and errors/empty states, a concise role/action matrix, test date/browser/viewport, and expected versus actual outcomes. Avoid deleting records or changing existing user roles. If a test needs a database write, use an identifiable test item and ask before any cleanup. Do not call the current KDPA timer legally compliant: the hosted C2 implementation is severity/incident-time based, not a human breach assessment.
+After configuring Production, do one practical smoke check: open the site privately, sign in with the separately supplied demo account, and confirm the dashboard and main modules load. If those work, record the date and proceed. Do not turn this into another full regression programme. Do not delete existing records or alter user roles during the check.
 
-The C3 branch contains optional local work for formula-safe CSV/race regression and a human-led breach-assessment workflow. Its local clean-chain tests (24 passing) and Vite build passed; its migration was **not** applied to Supabase. It is not needed to finish P4 or the academic report.
+In the report, describe the hosted C2 KDPA timer accurately: it is severity/incident-time based and does not implement a human breach assessment. Do not call it legally compliant. The optional C3 workflow is not part of the release and can be omitted from the product claims.
 
 ## Academic report handoff
 
@@ -45,4 +45,4 @@ The supplied final-report guidance specifies a 6,500-word Level 6 report, due **
 
 The proposal and interim feedback both awarded 80%. The interim feedback specifically asks for interface screenshots, expected/actual test evidence, security-test results, usability evaluation if genuinely conducted, performance evaluation, limitations, and selected security code examples. Do not invent participants, UAT/SUS results, penetration testing, compliance certification, or legal compliance. Mark work not actually conducted as such and discuss the limitation honestly.
 
-After P4 evidence has been collected and reviewed, proceed to the next report/evaluation phase. The interim report's original aims and objectives remain the comparison baseline; explain any scope change and the actual extent each objective was achieved.
+Proceed to the next report/evaluation phase after the short smoke check. Use the interim report's original aims and objectives as the comparison baseline; explain any scope change and the actual extent each objective was achieved. Do not invent usability participants, UAT/SUS results, penetration testing, compliance certification, or legal compliance. State only evidence actually collected and move on; additional engineering tests are not a prerequisite for the academic report.
